@@ -3,7 +3,17 @@
     "allow": [
       "Bash(python:*)",
       "Bash(.venv/Scripts/pip install -r Requirements.txt)",
-      "Bash(.venv/Scripts/python:*)"
+      "Bash(.venv/Scripts/python:*)",
+      "Bash(chmod:*)",
+      "Bash(grep:*)",
+      "Bash(if [ ! -d \"venv\" ])",
+      "Bash(then python -m venv venv)",
+      "Bash(else echo \"venv already exists\")",
+      "Bash(fi)",
+      "Bash(source:*)",
+      "Bash(pip install:*)",
+      "Bash(ls:*)",
+      "Bash(git add:*)"
     ]
   }
 }
