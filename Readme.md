@@ -39,6 +39,30 @@ docker compose -f docker/docker-compose.yml up -d
 docker compose -f docker/docker-compose.yml run --rm app python -m app.main --infile inbox/transcript.txt
 ```
 
+### Option 3: Web UI
+
+A browser-based interface for uploading transcripts, monitoring progress in real time, reviewing claims, and viewing reports.
+
+```bash
+# Start the web server
+python -m app.web.server
+
+# Or via Make
+make web
+```
+
+Then open **http://localhost:8000** in your browser.
+
+**Web UI features:**
+- Upload transcripts via drag-and-drop or file picker
+- Real-time progress dashboard with per-stage progress bars (extract, retrieve, verify)
+- Live counters for claims, sources, snippets, and failures
+- Optional claim review step — edit or drop claims before verification
+- Rendered report with score badge and artifact downloads
+- Past runs history
+
+The web UI uses the same pipeline as the CLI. No additional services are required beyond Ollama and SearXNG.
+
 ## Project Structure
 
 ```
@@ -48,7 +72,12 @@ evident-video-fact-checker/
 │   ├── pipeline/           # Processing stages
 │   ├── schemas/            # Pydantic models
 │   ├── store/              # Store modules
-│   └── tools/              # Utilities (fetch, parse, ollama)
+│   ├── tools/              # Utilities (fetch, parse, ollama)
+│   └── web/                # Web UI (FastAPI + HTMX)
+│       ├── server.py       # Routes and SSE endpoint
+│       ├── runner.py       # Background pipeline runner
+│       ├── templates/      # Jinja2 HTML templates
+│       └── static/         # Vendored CSS/JS (Pico.css, HTMX)
 ├── docker/                 # Docker configuration
 │   ├── docker-compose.yml
 │   ├── docker-compose.gpu.yml      # NVIDIA GPU override
@@ -172,6 +201,7 @@ runs/YYYYMMDD_HHMMSS__channel__video_title/
 ```bash
 make help              # Show all commands
 make setup             # Run setup wizard
+make web               # Start web UI at http://localhost:8000
 make runvid ARGS='...' # Run natively (recommended)
 make start             # Start Docker services
 make stop              # Stop Docker services

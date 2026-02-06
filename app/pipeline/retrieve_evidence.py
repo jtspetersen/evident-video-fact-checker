@@ -164,6 +164,7 @@ def retrieve_for_claims(
     deny_domains=None,
     query_overrides=None,
     extra_fetch_budget: int = 0,
+    progress_callback=None,
 ):
     retrieved_at = datetime.now(tz.gettz(tz_name)).isoformat()
 
@@ -195,8 +196,25 @@ def retrieve_for_claims(
     )
     claim_bar.set_postfix_str("src=0 snip=0 fail=0")
 
+    def _cb(data):
+        if progress_callback:
+            progress_callback(data)
+
+    claim_idx = 0
+
     with ThreadPoolExecutor(max_workers=fetch_workers) as executor:
         for c in claim_bar:
+            claim_idx += 1
+            _cb({
+                "claim_idx": claim_idx,
+                "total_claims": len(claims),
+                "claim_id": c.claim_id,
+                "status": "searching",
+                "sources": len(all_sources),
+                "snippets": len(all_snippets),
+                "failures": len(fetch_failures),
+            })
+
             query = query_overrides.get(c.claim_id) or c.claim_text
 
             results = searx_search(
@@ -313,6 +331,17 @@ def retrieve_for_claims(
                 "snippets": claim_snips
             }
             claim_bar.set_description("Retrieving evidence")
+
+            _cb({
+                "claim_idx": claim_idx,
+                "total_claims": len(claims),
+                "claim_id": c.claim_id,
+                "status": "done",
+                "sources": len(all_sources),
+                "snippets": len(all_snippets),
+                "failures": len(fetch_failures),
+                "claim_sources": len(claim_snips),
+            })
 
     claim_bar.close()
 

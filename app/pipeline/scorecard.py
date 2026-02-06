@@ -4,7 +4,7 @@ def severity_weight(sev: str) -> int:
 
 def score(verdicts):
     s = 100
-    counts = {"VERIFIED":0, "LIKELY TRUE":0, "UNCERTAIN":0, "LIKELY FALSE":0, "FALSE":0}
+    counts = {"VERIFIED":0, "LIKELY TRUE":0, "INSUFFICIENT EVIDENCE":0, "CONFLICTING EVIDENCE":0, "LIKELY FALSE":0, "FALSE":0}
     red_flags = {}
     tiers = {}
 
@@ -15,7 +15,7 @@ def score(verdicts):
             s -= 6 * w
         elif v.rating == "LIKELY FALSE":
             s -= 4 * w
-        elif v.rating == "UNCERTAIN":
+        elif v.rating in ("INSUFFICIENT EVIDENCE", "CONFLICTING EVIDENCE"):
             s -= 2 * w
 
         for rf in v.red_flags:

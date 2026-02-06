@@ -36,7 +36,7 @@ HARD RULES:
 - Evidence over ideology; no partisan framing language.
 - Use ONLY transcript quotes and the verdicts provided.
 - Do not introduce new facts. No new claims.
-- If something is UNCERTAIN, say so plainly.
+- If evidence is insufficient or conflicting, say so plainly.
 
 CRITICAL: Identify rhetorical manipulation:
 - When a TRUE fact is used to support a FALSE conclusion
@@ -104,7 +104,7 @@ def _build_executive_overview(channel, overall, counts, red_flags):
         "| Rating | Count |",
         "|--------|-------|",
     ]
-    for rating in ("VERIFIED", "LIKELY TRUE", "UNCERTAIN", "LIKELY FALSE", "FALSE"):
+    for rating in ("VERIFIED", "LIKELY TRUE", "INSUFFICIENT EVIDENCE", "CONFLICTING EVIDENCE", "LIKELY FALSE", "FALSE"):
         lines.append(f"| {rating} | {counts.get(rating, 0)} |")
 
     lines.append("")
