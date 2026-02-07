@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-02-05
+
+### Added
+- **YouTube URL Ingest**: Accept YouTube URLs via CLI (`--url`) and web UI to auto-fetch transcripts. Tries YouTube captions first, falls back to local Whisper transcription.
+- **Video Metadata**: Automatically extracts title, channel, duration, and upload date from YouTube videos via yt-dlp.
+- **Whisper Fallback**: Downloads audio and transcribes locally with faster-whisper (model=small, cpu, int8) when no captions are available.
+- **FFmpeg Auto-Detection**: Searches winget packages, Chocolatey, Scoop, and Program Files paths when ffmpeg is not in PATH.
+- **FFmpeg Setup**: Interactive setup wizard (`setup.py`) now offers to install ffmpeg automatically via winget/apt/brew.
+- **Web UI URL Mode**: Toggle between file upload and YouTube URL input on the index page, with dedicated SSE progress panel for YouTube fetch stage.
+- **YouTube Progress Events**: Real-time SSE updates during transcript fetch (caption lookup, audio download, Whisper transcription).
+
+### Fixed
+- **youtube-transcript-api v1.x Compatibility**: Updated from deprecated class methods to instance-based API (`YouTubeTranscriptApi()`, `.list()`, `.fetch()`, `.snippets`).
+- **Timestamp Preservation**: Both caption and Whisper methods now include timestamps in M:SS/H:MM:SS format, compatible with `normalize_transcript`.
+- **Web UI Crash on YouTube URLs**: Fixed `os.path.basename(None)` crash when `infile` is None for YouTube URL runs.
+- **Channel Name Capture**: Channel slug and output directory are now updated after YouTube metadata is fetched, instead of showing "unknown".
+- **H:MM:SS Timestamp Support**: `normalize_transcript` regex updated to handle hour-long videos with H:MM:SS timestamps.
+
+### Changed
+- **Dependencies**: Added youtube-transcript-api, yt-dlp, faster-whisper to Requirements.txt.
+- **CLI**: `--url` and `--infile` are mutually exclusive; `--channel` auto-inferred from YouTube metadata.
+- **Web Runner**: New `fetch_transcript` stage in pipeline, with outdir rename after metadata is available.
+- **Documentation**: Updated README and CLAUDE.md with YouTube URL usage, FFmpeg requirements, and web UI features.
+
+### Technical Details
+**Commits**: 6 commits on `yt-transcript-ingest` branch
+- New: `app/tools/youtube.py` (287 lines)
+- Modified: `app/main.py`, `app/pipeline/ingest.py`, `app/web/runner.py`, `app/web/server.py`
+- Modified: `app/web/templates/index.html`, `app/web/templates/progress.html`
+- Modified: `Requirements.txt`, `setup.py`, `CLAUDE.md`, `Readme.md`
+
 ## [0.2.0] - 2026-02-05
 
 ### Fixed
