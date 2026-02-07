@@ -14,6 +14,14 @@ import tempfile
 from pathlib import Path
 
 
+def _fmt_timestamp(seconds: float) -> str:
+    """Format seconds as M:SS or H:MM:SS for normalize_transcript compatibility."""
+    s = int(seconds)
+    if s < 3600:
+        return f"{s // 60}:{s % 60:02d}"
+    return f"{s // 3600}:{(s % 3600) // 60:02d}:{s % 60:02d}"
+
+
 def extract_video_id(url_or_id: str) -> str:
     """Extract 11-char YouTube video ID from various URL formats.
 
@@ -108,7 +116,11 @@ def _fetch_captions(video_id: str, languages=None) -> str | None:
                 return None
 
         items = transcript.fetch()
-        return "\n".join(item["text"] for item in items)
+        lines = []
+        for item in items:
+            ts = _fmt_timestamp(item.get("start", 0))
+            lines.append(f"{ts} {item['text']}")
+        return "\n".join(lines)
 
     except (TranscriptsDisabled, NoTranscriptFound):
         return None
@@ -211,7 +223,10 @@ def _download_and_transcribe(url: str, progress_callback=None) -> str:
         from faster_whisper import WhisperModel
         model = WhisperModel("small", device="cpu", compute_type="int8")
         segments, _info = model.transcribe(str(audio_path), beam_size=5)
-        lines = [seg.text.strip() for seg in segments]
+        lines = []
+        for seg in segments:
+            ts = _fmt_timestamp(seg.start)
+            lines.append(f"{ts} {seg.text.strip()}")
         text = "\n".join(lines).strip()
 
         if not text:

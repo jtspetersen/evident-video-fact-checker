@@ -14,12 +14,12 @@ def normalize_transcript(text: str):
     current_speaker = None
 
     for line in lines:
-        # Skip lines that are just timestamps (e.g., "00:02")
-        if re.match(r'^\d{1,2}:\d{2}$', line):
+        # Skip lines that are just timestamps (e.g., "00:02" or "1:05:30")
+        if re.match(r'^\d{1,2}(?::\d{2}){1,2}$', line):
             continue
 
-        # Parse timestamp and content (format: "00:00 text" or "00:00 >> text")
-        match = re.match(r'^(\d{1,2}:\d{2})\s+(>>)?\s*(.*)$', line)
+        # Parse timestamp and content (format: "0:00 text", "1:05:30 text", or "0:00 >> text")
+        match = re.match(r'^(\d{1,2}(?::\d{2}){1,2})\s+(>>)?\s*(.*)$', line)
 
         if match:
             timestamp = match.group(1)
