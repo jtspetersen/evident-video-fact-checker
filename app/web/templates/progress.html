@@ -59,6 +59,15 @@
     {% endfor %}
 </div>
 
+<!-- YouTube transcript fetch detail panel -->
+<div class="stage-detail" id="youtube-detail">
+    <h4>Fetching YouTube Transcript</h4>
+    <div class="detail-message" id="youtube-message">Preparing...</div>
+    <div class="detail-stats">
+        <div>Source: <strong id="youtube-source">pending</strong></div>
+    </div>
+</div>
+
 <!-- Extract claims detail panel -->
 <div class="stage-detail" id="extract-detail">
     <h4>Extracting Claims</h4>
@@ -67,6 +76,16 @@
     <div class="detail-stats">
         <div>Chunk <strong id="extract-chunk">0</strong> / <span id="extract-total">1</span></div>
         <div>Claims found: <strong id="extract-claims">0</strong></div>
+    </div>
+</div>
+
+<!-- Consolidate claims detail panel -->
+<div class="stage-detail" id="consolidate-detail">
+    <h4>Consolidating Claims</h4>
+    <div class="detail-message" id="consolidate-message">Analyzing claims for duplicates and narrative groups...</div>
+    <div class="detail-stats">
+        <div>Duplicates removed: <strong id="consolidate-dupes">0</strong></div>
+        <div>Narrative groups: <strong id="consolidate-groups">0</strong></div>
     </div>
 </div>
 
@@ -83,13 +102,13 @@
     </div>
 </div>
 
-<!-- Verify claims detail panel -->
+<!-- Check claims detail panel -->
 <div class="stage-detail" id="verify-detail">
-    <h4>Verifying Claims</h4>
+    <h4>Checking Claims</h4>
     <div class="detail-message" id="verify-message">Preparing...</div>
     <progress id="verify-bar" value="0" max="1"></progress>
     <div class="detail-stats">
-        <div>Verified <strong id="verify-current">0</strong> / <span id="verify-total">0</span></div>
+        <div>Checked <strong id="verify-current">0</strong> / <span id="verify-total">0</span></div>
     </div>
 </div>
 
@@ -116,6 +135,20 @@
         <strong id="cnt-failures">{{ cnts.get('fetch_failures', 0) }}</strong>
         <small>Failures</small>
     </div>
+    <div>
+        <strong id="cnt-groups">{{ cnts.get('narrative_groups', 0) }}</strong>
+        <small>Groups</small>
+    </div>
+</div>
+
+<!-- Stop button -->
+<div style="margin: 1rem 0;" id="stop-container">
+    <form method="POST" action="/run/{{ run_id }}/stop"
+          onsubmit="return confirm('Stop this run?');">
+        <button type="submit" class="outline secondary" id="stop-btn">
+            Stop Run
+        </button>
+    </form>
 </div>
 
 <!-- Log stream -->
@@ -137,7 +170,9 @@
     let sseConnected = false;
 
     // Detail panel elements
+    const youtubeDetail = document.getElementById('youtube-detail');
     const extractDetail = document.getElementById('extract-detail');
+    const consolidateDetail = document.getElementById('consolidate-detail');
     const retrieveDetail = document.getElementById('retrieve-detail');
     const verifyDetail = document.getElementById('verify-detail');
 
@@ -186,12 +221,16 @@
             activeStage = data.name;
 
             // Show/hide detail panels based on which stage is active
+            hidePanel(youtubeDetail);
             hidePanel(extractDetail);
+            hidePanel(consolidateDetail);
             hidePanel(retrieveDetail);
             hidePanel(verifyDetail);
-            if (data.name === 'extract_claims') showPanel(extractDetail);
+            if (data.name === 'fetch_transcript') showPanel(youtubeDetail);
+            else if (data.name === 'extract_claims') showPanel(extractDetail);
+            else if (data.name === 'consolidate_claims') showPanel(consolidateDetail);
             else if (data.name === 'retrieve_evidence') showPanel(retrieveDetail);
-            else if (data.name === 'verify_claims') showPanel(verifyDetail);
+            else if (data.name === 'check_claims') showPanel(verifyDetail);
 
         } else if (data.status === 'completed') {
             el.classList.remove('active');
@@ -199,9 +238,42 @@
             completedStages.add(data.name);
             if (activeStage === data.name) activeStage = null;
 
+            if (data.name === 'fetch_transcript') hidePanel(youtubeDetail);
             if (data.name === 'extract_claims') hidePanel(extractDetail);
+            if (data.name === 'consolidate_claims') hidePanel(consolidateDetail);
             if (data.name === 'retrieve_evidence') hidePanel(retrieveDetail);
-            if (data.name === 'verify_claims') hidePanel(verifyDetail);
+            if (data.name === 'check_claims') hidePanel(verifyDetail);
+        }
+    });
+
+    // -- YouTube transcript fetch progress --
+    source.addEventListener('youtube_progress', function(e) {
+        const d = JSON.parse(e.data);
+        showPanel(youtubeDetail);
+
+        const msg = document.getElementById('youtube-message');
+        const srcEl = document.getElementById('youtube-source');
+
+        if (d.status === 'extracting_id') {
+            msg.textContent = 'Parsing YouTube URL...';
+        } else if (d.status === 'fetching_metadata') {
+            msg.textContent = 'Fetching video metadata...';
+        } else if (d.status === 'trying_captions') {
+            msg.textContent = 'Looking for existing YouTube captions...';
+        } else if (d.status === 'captions_found') {
+            msg.textContent = 'Captions found! Downloading transcript...';
+            srcEl.textContent = 'captions';
+        } else if (d.status === 'no_captions') {
+            msg.textContent = 'No captions available. Falling back to Whisper transcription...';
+        } else if (d.status === 'downloading_audio') {
+            msg.textContent = 'Downloading audio from YouTube...';
+            srcEl.textContent = 'whisper';
+        } else if (d.status === 'transcribing') {
+            msg.textContent = 'Transcribing audio with Whisper (this may take a few minutes)...';
+            srcEl.textContent = 'whisper';
+        } else if (d.status === 'done') {
+            msg.textContent = 'Transcript ready (' + (d.source || 'unknown') + ')';
+            srcEl.textContent = d.source || 'done';
         }
     });
 
@@ -242,6 +314,30 @@
         } else if (d.status === 'done') {
             bar.value = bar.max;
             msg.textContent = 'Extraction complete';
+        }
+    });
+
+    // -- Consolidate claims progress --
+    source.addEventListener('consolidate_progress', function(e) {
+        const d = JSON.parse(e.data);
+        showPanel(consolidateDetail);
+
+        const msg = document.getElementById('consolidate-message');
+        const dupesEl = document.getElementById('consolidate-dupes');
+        const groupsEl = document.getElementById('consolidate-groups');
+
+        if (d.status === 'analyzing') {
+            msg.textContent = 'Analyzing ' + d.total_claims + ' claims for duplicates and narrative groups...';
+        } else if (d.status === 'done') {
+            dupesEl.textContent = d.duplicates_removed || 0;
+            groupsEl.textContent = d.groups || 0;
+            document.getElementById('cnt-groups').textContent = d.groups || 0;
+            document.getElementById('cnt-claims').textContent = d.total_claims || 0;
+            msg.textContent = 'Consolidation complete \u2014 ' + (d.duplicates_removed || 0) + ' duplicates removed, ' + (d.groups || 0) + ' narrative groups';
+        } else if (d.status === 'skipped') {
+            msg.textContent = 'Skipped: ' + (d.reason || 'N/A');
+        } else if (d.status === 'error') {
+            msg.textContent = 'Consolidation failed, continuing with original claims';
         }
     });
 
@@ -314,7 +410,7 @@
         document.getElementById('verify-bar').value = cur;
         document.getElementById('verify-current').textContent = cur;
         document.getElementById('verify-total').textContent = tot;
-        document.getElementById('verify-message').textContent = 'Verified ' + cur + ' of ' + tot + ' claims...';
+        document.getElementById('verify-message').textContent = 'Checked ' + cur + ' of ' + tot + ' claims...';
     });
 
     // -- Log messages --
@@ -339,12 +435,18 @@
     source.addEventListener('done', function(e) {
         const data = JSON.parse(e.data);
         source.close();
-        statusBadge.textContent = 'done';
-        statusBadge.className = 'badge badge-done';
 
+        var doneStatus = data.status === 'cancelled' ? 'cancelled' : 'done';
+        statusBadge.textContent = doneStatus;
+        statusBadge.className = 'badge badge-' + doneStatus;
+
+        hidePanel(youtubeDetail);
         hidePanel(extractDetail);
+        hidePanel(consolidateDetail);
         hidePanel(retrieveDetail);
         hidePanel(verifyDetail);
+
+        document.getElementById('stop-container').style.display = 'none';
 
         document.querySelectorAll('.stage-box.active').forEach(function(el) {
             el.classList.remove('active');
@@ -371,9 +473,12 @@
             // This is a server-sent error event
             statusBadge.textContent = 'error';
             statusBadge.className = 'badge badge-error';
+            hidePanel(youtubeDetail);
             hidePanel(extractDetail);
+            hidePanel(consolidateDetail);
             hidePanel(retrieveDetail);
             hidePanel(verifyDetail);
+            document.getElementById('stop-container').style.display = 'none';
             addLog('ERROR: ' + msg);
             source.close();
         } catch(_) {

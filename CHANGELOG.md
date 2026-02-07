@@ -8,23 +8,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.3.0] - 2026-02-05
 
 ### Added
-- **Web UI**: Browser-based interface for running the full pipeline without the command line (FastAPI + HTMX + Jinja2 + Pico.css, all vendored — no CDN or npm required).
-  - Upload transcripts via drag-and-drop or file picker
-  - Real-time progress dashboard with per-stage progress bars and live counters (claims, sources, snippets, failures) via Server-Sent Events
-  - Claim review step — edit or drop claims before verification
-  - Rendered report page with verdict summary badges and artifact downloads
-  - Past runs history page
+- **YouTube URL Ingest**: Accept YouTube URLs via CLI (`--url`) and web UI to auto-fetch transcripts. Tries YouTube captions first, falls back to local Whisper transcription via faster-whisper.
+- **Video Metadata**: Automatically extracts title, channel, duration, and upload date from YouTube videos via yt-dlp.
+- **FFmpeg Auto-Detection**: Searches winget packages, Chocolatey, Scoop, and Program Files paths when ffmpeg is not in PATH.
+- **Web UI**: Browser-based interface (FastAPI + HTMX + Jinja2 + Pico.css, all vendored) with real-time progress dashboard, claim review, report rendering, and past runs history.
+- **Web UI URL Mode**: Toggle between file upload and YouTube URL input, with dedicated SSE progress panel for YouTube fetch stage.
 - **Docker support**: Full Docker setup with `docker-compose.yml`, GPU overrides for NVIDIA and AMD, and interactive setup wizard (`setup.py`).
-- **Project roadmap**: `ROADMAP.md` covering extraction quality, verification efficiency, and summary template improvements.
+- **Claim Consolidation**: Deduplication and narrative grouping of related claims with group-level verdicts.
+
+### Fixed
+- **youtube-transcript-api v1.x Compatibility**: Updated from deprecated class methods to instance-based API (`YouTubeTranscriptApi()`, `.list()`, `.fetch()`, `.snippets`).
+- **Timestamp Preservation**: Both caption and Whisper methods now include timestamps in M:SS/H:MM:SS format, compatible with `normalize_transcript`.
+- **Web UI Crash on YouTube URLs**: Fixed `os.path.basename(None)` crash when `infile` is None for YouTube URL runs.
+- **Channel Name Capture**: Channel slug and output directory are now updated after YouTube metadata is fetched, instead of showing "unknown".
 
 ### Changed
-- **Verdict ratings**: Replaced the single `UNCERTAIN` rating with two distinct ratings:
-  - `INSUFFICIENT EVIDENCE` — not enough quality sources found to evaluate the claim
-  - `CONFLICTING EVIDENCE` — credible sources disagree with each other
-- **Score removal**: Removed the numerical 0-100 truthfulness score. Reports now show verdict count badges instead.
-- **Output artifact**: Renamed `07_08_review_outline_and_script.md` to `07_summary.md`.
-- **Parallel processing**: `ThreadPoolExecutor` for evidence fetching (8 workers) and verification (3 workers) with thread-safe fetch stats.
-- **Session pooling**: HTTP session reuse for fetch and search requests.
+- **Verdict ratings**: Replaced `UNCERTAIN` with `INSUFFICIENT EVIDENCE` and `CONFLICTING EVIDENCE`.
+- **Score removal**: Removed numerical 0-100 score. Reports now show verdict count badges instead.
+- **Dependencies**: Added youtube-transcript-api, yt-dlp, faster-whisper to Requirements.txt.
+- **CLI**: `--url` and `--infile` are mutually exclusive; `--channel` auto-inferred from YouTube metadata.
+- **Parallel processing**: `ThreadPoolExecutor` for evidence fetching (8 workers) and verification (3 workers).
 
 ### Removed
 - `runvid` / `runvid.bat` scripts (replaced by `run.sh` and `make` commands)

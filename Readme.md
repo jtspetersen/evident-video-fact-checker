@@ -4,121 +4,102 @@ A local fact-checking pipeline for analyzing video transcripts and verifying cla
 
 ## Features
 
-- **Transcript ingestion** - Handles fragmented YouTube transcripts with speaker detection
+- **Transcript ingestion** - Upload a file or paste a YouTube URL; auto-fetches captions or transcribes locally with Whisper
 - **Claim extraction** - Overlapping chunks prevent missing claims at segment boundaries
 - **Evidence retrieval** - 6-tier quality system prioritizes scholarly sources over forums/blogs
 - **Claim verification** - LLM reasoning with citations, confidence scoring, and rhetorical analysis
 - **Report generation** - Detailed verdicts with verdict count summaries, and video script outline
 
-## Quick Start
+## Setup
 
-### Option 1: Native Setup (Recommended for Windows with GPU)
+### Prerequisites
+
+| Requirement | Purpose | Install |
+|-------------|---------|---------|
+| **Python 3.11+** | Runtime | [python.org](https://www.python.org/downloads/) |
+| **Ollama** | Local LLM server (GPU recommended) | [ollama.com](https://ollama.com/) |
+| **SearXNG + Redis** | Metasearch for evidence retrieval | See Docker step below |
+| **FFmpeg** | YouTube Whisper fallback (optional) | `winget install Gyan.FFmpeg` / `apt install ffmpeg` / `brew install ffmpeg` |
+
+### Install
 
 ```bash
-# 1. Install dependencies
+# 1. Install Python dependencies
 pip install -r Requirements.txt
 
-# 2. Ensure services are running:
-#    - Ollama (with GPU): ollama serve
-#    - SearXNG: docker compose -f docker/docker-compose.yml up -d searxng redis
+# 2. Start Ollama (if not already running)
+ollama serve
 
-# 3. Run the pipeline
-./run.sh --infile "inbox/transcript.txt" --channel "Channel Name"
+# 3. Pull recommended models
+ollama pull qwen3:8b
+ollama pull qwen3:30b
+ollama pull gemma3:27b
+
+# 4. Start SearXNG (metasearch engine)
+docker compose -f docker/docker-compose.yml up -d searxng redis
 ```
 
-### Option 2: Full Docker Setup
+Or use the interactive setup wizard for guided configuration:
 
 ```bash
-# 1. Run interactive setup wizard
 python setup.py
-
-# 2. Start services
-docker compose -f docker/docker-compose.yml up -d
-
-# 3. Run pipeline (in Docker)
-docker compose -f docker/docker-compose.yml run --rm app python -m app.main --infile inbox/transcript.txt
 ```
 
-### Option 3: Web UI
+### Hardware Recommendations
 
-A browser-based interface for uploading transcripts, monitoring progress in real time, reviewing claims, and viewing reports.
+| VRAM | RAM | Recommended Models |
+|------|-----|-------------------|
+| 24GB+ | 32GB+ | qwen3:30b, gemma3:27b |
+| 12-16GB | 32GB+ | qwen3:14b, llama3:8b |
+| 8GB | 16GB+ | qwen3:8b, llama3:8b |
+| None | 32GB+ | qwen3:8b (CPU mode) |
+
+## Web UI
+
+Start the web server and open **http://localhost:8000** in your browser:
 
 ```bash
-# Start the web server
 python -m app.web.server
-
-# Or via Make
-make web
 ```
 
-Then open **http://localhost:8000** in your browser.
-
-**Web UI features:**
-- Upload transcripts via drag-and-drop or file picker
-- Real-time progress dashboard with per-stage progress bars (extract, retrieve, verify)
+The web UI provides:
+- Upload transcripts via drag-and-drop or paste a YouTube URL
+- Real-time progress dashboard with per-stage progress bars
 - Live counters for claims, sources, snippets, and failures
 - Optional claim review step — edit or drop claims before verification
 - Rendered report with verdict summary badges and artifact downloads
 - Past runs history
 
-The web UI uses the same pipeline as the CLI. No additional services are required beyond Ollama and SearXNG.
+## CLI
 
-## Project Structure
+### From a YouTube URL
 
-```
-evident-video-fact-checker/
-├── app/                    # Application code
-│   ├── main.py             # CLI entry point
-│   ├── pipeline/           # Processing stages
-│   ├── schemas/            # Pydantic models
-│   ├── store/              # Store modules
-│   ├── tools/              # Utilities (fetch, parse, ollama)
-│   └── web/                # Web UI (FastAPI + HTMX)
-│       ├── server.py       # Routes and SSE endpoint
-│       ├── runner.py       # Background pipeline runner
-│       ├── templates/      # Jinja2 HTML templates
-│       └── static/         # Vendored CSS/JS (Pico.css, HTMX)
-├── docker/                 # Docker configuration
-│   ├── docker-compose.yml
-│   ├── docker-compose.gpu.yml      # NVIDIA GPU override
-│   ├── docker-compose.amd.yml      # AMD ROCm override
-│   └── Dockerfile
-├── inbox/                  # Input transcripts
-├── runs/                   # Output directories (timestamped)
-├── cache/                  # URL cache (gitignored)
-├── store/                  # Persistent storage (gitignored)
-├── searxng/                # SearXNG configuration
-├── config.yaml             # Application config
-├── .env                    # Environment variables
-├── run.sh                  # Run script
-├── setup.py                # Interactive setup wizard
-└── Makefile                # Make commands
+```bash
+python -m app.main --url "https://www.youtube.com/watch?v=VIDEO_ID"
 ```
 
-## Usage
+Auto-fetches captions when available, or transcribes with Whisper as fallback. Channel name is inferred from YouTube metadata.
 
-### Command-Line Flags
+### From a transcript file
+
+```bash
+python -m app.main --infile "inbox/transcript.txt" --channel "Channel Name"
+```
+
+Place transcript files in `inbox/`. If `--infile` is omitted, the newest file in `inbox/` is used.
+
+### Flags
 
 | Flag | Description | Default |
 |------|-------------|---------|
+| `--url <youtube-url>` | YouTube video URL | — |
 | `--infile <path>` | Path to transcript file | Newest in `inbox/` |
-| `--channel <name>` | Channel/creator name | Inferred from filename |
+| `--channel <name>` | Channel/creator name | Inferred from filename or YouTube metadata |
 | `--review` | Interactive claim review mode | Disabled |
 | `--verbose` | Show DEBUG output | Disabled |
 | `--quiet` | Errors/warnings only | Disabled |
 
-### Examples
-
-```bash
-# Native execution (recommended for Windows with GPU)
-./run.sh --infile "inbox/transcript.txt" --channel "Channel Name"
-
-# With interactive review
-./run.sh --infile "inbox/transcript.txt" --review --verbose
-
-# Direct Python
-python -m app.main --infile "inbox/transcript.txt" --channel "Channel Name"
-```
+`--url` and `--infile` are mutually exclusive.
 
 ## Configuration
 
@@ -151,8 +132,6 @@ budgets:
 
 ### Verdict Ratings
 
-Each claim receives one of six ratings:
-
 | Rating | Meaning |
 |--------|---------|
 | VERIFIED | Confirmed by strong evidence |
@@ -163,8 +142,6 @@ Each claim receives one of six ratings:
 | FALSE | Clearly contradicted by strong evidence |
 
 ### Source Quality Tiers
-
-The pipeline uses a 6-tier source quality system:
 
 | Tier | Description | Examples |
 |------|-------------|----------|
@@ -188,26 +165,53 @@ runs/YYYYMMDD_HHMMSS__channel__video_title/
 ├── 04_snippets.json                # Evidence snippets
 ├── 05_verdicts.json                # Verification results
 ├── 06_scorecard.md                 # Verdict counts and source tiers
-├── 07_summary.md                      # Video script
+├── 07_summary.md                   # Fact-check report
 ├── run.json                        # Run metadata
 └── run.log                         # Execution log
 ```
 
-## Requirements
+## Project Structure
 
-- **Python 3.11+**
-- **Ollama** - Local LLM server (GPU recommended)
-- **SearXNG** - Metasearch engine for evidence retrieval
-- **Redis** - For SearXNG caching
+```
+evident-video-fact-checker/
+├── app/                    # Application code
+│   ├── main.py             # CLI entry point
+│   ├── pipeline/           # Processing stages
+│   ├── schemas/            # Pydantic models
+│   ├── store/              # Store modules
+│   ├── tools/              # Utilities (fetch, parse, ollama, youtube)
+│   └── web/                # Web UI (FastAPI + HTMX)
+│       ├── server.py       # Routes and SSE endpoint
+│       ├── runner.py       # Background pipeline runner
+│       ├── templates/      # Jinja2 HTML templates
+│       └── static/         # Vendored CSS/JS (Pico.css, HTMX)
+├── docker/                 # Docker configuration
+│   ├── docker-compose.yml
+│   ├── docker-compose.gpu.yml      # NVIDIA GPU override
+│   ├── docker-compose.amd.yml      # AMD ROCm override
+│   └── Dockerfile
+├── inbox/                  # Input transcripts
+├── runs/                   # Output directories (timestamped)
+├── cache/                  # URL cache (gitignored)
+├── store/                  # Persistent storage (gitignored)
+├── searxng/                # SearXNG configuration
+├── config.yaml             # Application config
+├── .env                    # Environment variables
+├── setup.py                # Interactive setup wizard
+└── Makefile                # Make commands
+```
 
-### Hardware Recommendations
+## Docker
 
-| VRAM | RAM | Recommended Models |
-|------|-----|-------------------|
-| 24GB+ | 32GB+ | qwen3:30b, gemma3:27b |
-| 12-16GB | 32GB+ | qwen3:14b, llama3:8b |
-| 8GB | 16GB+ | qwen3:8b, llama3:8b |
-| None | 32GB+ | qwen3:8b (CPU mode) |
+For a fully containerized setup, see [DOCKER.md](DOCKER.md).
+
+```bash
+# Start all services
+docker compose -f docker/docker-compose.yml up -d
+
+# Run pipeline in Docker
+docker compose -f docker/docker-compose.yml run --rm app python -m app.main --infile inbox/transcript.txt
+```
 
 ## Make Commands
 
