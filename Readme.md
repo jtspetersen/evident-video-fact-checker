@@ -5,10 +5,10 @@ A local fact-checking pipeline for analyzing video transcripts and verifying cla
 ## Features
 
 - **Transcript ingestion** - Upload a file or paste a YouTube URL; auto-fetches captions or transcribes locally with Whisper
-- **Claim extraction** - Overlapping chunks prevent missing claims at segment boundaries
-- **Evidence retrieval** - 6-tier quality system prioritizes scholarly sources over forums/blogs
+- **Claim extraction** - Scan trascript to gather a list of claims made in the video.
+- **Evidence retrieval** - Search for corroborating evidence to claims gathered. 6-tier quality system prioritizes scholarly sources over forums/blogs
 - **Claim verification** - LLM reasoning with citations, confidence scoring, and rhetorical analysis
-- **Report generation** - Detailed verdicts with verdict count summaries, and video script outline
+- **Report generation** - Detailed redout of the summary of all claims researched.
 
 ## Setup
 
@@ -122,7 +122,7 @@ EVIDENT_MODEL_WRITE=gemma3:27b
 ollama:
   model_extract: "qwen3:8b"      # Claim extraction
   model_verify: "qwen3:30b"      # Verification
-  model_write: "gemma3:27b"      # Script writing
+  model_write: "gemma3:27b"      # Report writing
 
 budgets:
   max_claims: 25
@@ -134,7 +134,7 @@ budgets:
 
 | Rating | Meaning |
 |--------|---------|
-| VERIFIED | Confirmed by strong evidence |
+| TRUE | Confirmed by strong evidence |
 | LIKELY TRUE | Supported but not fully confirmed |
 | INSUFFICIENT EVIDENCE | Not enough quality sources found |
 | CONFLICTING EVIDENCE | Credible sources disagree |
