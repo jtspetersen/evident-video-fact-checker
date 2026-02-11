@@ -9,6 +9,8 @@ def append_run_index(
     outdir: str,
     verdict_counts: dict,
     duration_sec: float,
+    video_title: str = None,
+    channel: str = None,
 ):
     os.makedirs("store", exist_ok=True)
     path = os.path.join("store", "run_index.jsonl")
@@ -19,6 +21,8 @@ def append_run_index(
         "outdir": outdir,
         "verdict_counts": verdict_counts,
         "duration_sec": round(float(duration_sec), 2),
+        "video_title": video_title,
+        "channel": channel,
     }
     with open(path, "a", encoding="utf-8") as f:
         f.write(json.dumps(rec, ensure_ascii=False) + "\n")

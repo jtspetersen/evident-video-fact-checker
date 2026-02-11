@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-02-10
+
+### Added
+- **Web UI Overhaul**: Redesigned all templates with consistent layout — logo, nav buttons ("Start New" / "History"), and unified page headers across progress, review, report, and runs pages.
+- **Dynamic Video Titles**: Progress and review pages display "Fact-Checking Video: {title}" with real-time SSE updates from YouTube metadata.
+- **Token Usage Tracking**: Captures prompt and completion token counts from Ollama API responses per-stage and per-run, stored in `run.json` manifest under `token_usage` and `timings.{stage}.tokens`.
+- **Video Title & Channel in Run History**: Runs table now shows Video Title and Channel columns with fallback enrichment from manifests for older runs.
+- **Report Metadata**: Report page shows Video Title, Channel, ID, and Date inline, replacing the LLM-generated header.
+- **Upload Form Improvements**: Video Title and Channel fields shown only in Upload File mode, both required with per-mode JS validation.
+
+### Changed
+- **Pipeline Stages Simplified**: Merged 9 stages into 6 in web UI (Prepare Transcript, Extract Claims, Review Claims, Gather Evidence, Check Claims, Fact-Check Summary).
+- **Stage Timeline**: Server-side CSS class rendering from manifest timings survives page reloads and navigation between progress/review pages.
+- **Review Page**: Header matches progress page layout; added "Review Extracted Claims" H2 with claim count instruction; Edit feature deprecated.
+- **Download Artifacts**: Restyled as a collapsible details section with background panel.
+
+### Fixed
+- **Review Redirect Bug**: Completed stage indicators no longer reset to grey when navigating to/from the review page.
+
 ## [0.3.0] - 2026-02-05
 
 ### Added

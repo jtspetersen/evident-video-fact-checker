@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Evident — Run {{ run_id }}{% endblock %}
+{% block title %}Evident — {{ runner.video_title or run_id }}{% endblock %}
 
 {% block head %}
 <style>
@@ -40,35 +40,45 @@
 
 {% block content %}
 <hgroup>
-    <h1>Run: {{ run_id }}</h1>
+    <h1 id="run-title">Fact-Checking Video: {{ runner.video_title or 'Loading...' }}</h1>
     <p>
-        Channel: <strong>{{ runner.channel }}</strong>
+        Channel: <strong id="run-channel">{{ runner.channel }}</strong>
         &mdash;
         Status: <span id="status-badge" class="badge badge-{{ runner.status }}">{{ runner.status }}</span>
     </p>
 </hgroup>
 
 <!-- Stage timeline -->
+{% set stage_labels = {
+    "prepare_transcript": "Prepare Transcript",
+    "extract_claims": "Extract Claims",
+    "review_claims": "Review Claims",
+    "gather_evidence": "Gather Evidence",
+    "check_claims": "Check Claims",
+    "fact_check_summary": "Fact-Check Summary",
+} %}
+{% set timings = runner.manifest.get('timings', {}) %}
 <h3>Pipeline Stages</h3>
 <div class="stage-timeline" id="stage-timeline">
     {% for stage in runner.STAGE_ORDER %}
-    <div class="stage-box" id="stage-{{ stage }}"
-         data-stage="{{ stage }}">
-        {{ stage.replace('_', ' ').title() }}
+    {% set t = timings.get(stage, {}) %}
+    <div class="stage-box{% if t.get('finished_utc') %} completed{% elif runner.current_stage == stage %} active{% elif t.get('skipped') %} skipped{% endif %}"
+         id="stage-{{ stage }}" data-stage="{{ stage }}">
+        {{ stage_labels.get(stage, stage.replace('_', ' ').title()) }}
     </div>
     {% endfor %}
 </div>
 
-<!-- YouTube transcript fetch detail panel -->
-<div class="stage-detail" id="youtube-detail">
-    <h4>Fetching YouTube Transcript</h4>
-    <div class="detail-message" id="youtube-message">Preparing...</div>
+<!-- Prepare transcript detail panel (YouTube fetch + normalize) -->
+<div class="stage-detail" id="prepare-detail">
+    <h4>Preparing Transcript</h4>
+    <div class="detail-message" id="prepare-message">Preparing...</div>
     <div class="detail-stats">
-        <div>Source: <strong id="youtube-source">pending</strong></div>
+        <div>Source: <strong id="prepare-source">pending</strong></div>
     </div>
 </div>
 
-<!-- Extract claims detail panel -->
+<!-- Extract claims detail panel (extraction + consolidation) -->
 <div class="stage-detail" id="extract-detail">
     <h4>Extracting Claims</h4>
     <div class="detail-message" id="extract-message">Preparing...</div>
@@ -77,21 +87,19 @@
         <div>Chunk <strong id="extract-chunk">0</strong> / <span id="extract-total">1</span></div>
         <div>Claims found: <strong id="extract-claims">0</strong></div>
     </div>
-</div>
-
-<!-- Consolidate claims detail panel -->
-<div class="stage-detail" id="consolidate-detail">
-    <h4>Consolidating Claims</h4>
-    <div class="detail-message" id="consolidate-message">Analyzing claims for duplicates and narrative groups...</div>
-    <div class="detail-stats">
-        <div>Duplicates removed: <strong id="consolidate-dupes">0</strong></div>
-        <div>Narrative groups: <strong id="consolidate-groups">0</strong></div>
+    <!-- Consolidation sub-stats (shown when consolidation runs) -->
+    <div id="consolidate-stats" style="display:none; margin-top:0.5rem; padding-top:0.5rem; border-top:1px solid var(--pico-muted-border-color);">
+        <div class="detail-message" id="consolidate-message">Analyzing claims for duplicates and narrative groups...</div>
+        <div class="detail-stats">
+            <div>Duplicates removed: <strong id="consolidate-dupes">0</strong></div>
+            <div>Narrative groups: <strong id="consolidate-groups">0</strong></div>
+        </div>
     </div>
 </div>
 
-<!-- Retrieve evidence detail panel -->
+<!-- Gather evidence detail panel -->
 <div class="stage-detail" id="retrieve-detail">
-    <h4>Retrieving Evidence</h4>
+    <h4>Gathering Evidence</h4>
     <div class="detail-message" id="retrieve-message">Preparing...</div>
     <progress id="retrieve-bar" value="0" max="1"></progress>
     <div class="detail-stats">
@@ -165,19 +173,28 @@
     const logStream = document.getElementById('log-stream');
     const statusBadge = document.getElementById('status-badge');
     let logStarted = false;
-    let completedStages = new Set();
-    let activeStage = null;
     let sseConnected = false;
 
+    // Initialize completed stages from server-rendered classes (survives page reloads)
+    let completedStages = new Set();
+    let activeStage = null;
+    document.querySelectorAll('.stage-box.completed').forEach(function(el) {
+        completedStages.add(el.dataset.stage);
+    });
+    document.querySelectorAll('.stage-box.active').forEach(function(el) {
+        activeStage = el.dataset.stage;
+    });
+
     // Detail panel elements
-    const youtubeDetail = document.getElementById('youtube-detail');
+    const prepareDetail = document.getElementById('prepare-detail');
     const extractDetail = document.getElementById('extract-detail');
-    const consolidateDetail = document.getElementById('consolidate-detail');
     const retrieveDetail = document.getElementById('retrieve-detail');
     const verifyDetail = document.getElementById('verify-detail');
+    const allPanels = [prepareDetail, extractDetail, retrieveDetail, verifyDetail];
 
     function showPanel(panel) { panel.classList.add('visible'); }
     function hidePanel(panel) { panel.classList.remove('visible'); }
+    function hideAllPanels() { allPanels.forEach(function(p) { hidePanel(p); }); }
 
     function addLog(text) {
         if (!logStarted) {
@@ -201,6 +218,14 @@
         console.log('SSE connected');
     };
 
+    // Stage -> detail panel mapping
+    var stagePanels = {
+        'prepare_transcript': prepareDetail,
+        'extract_claims': extractDetail,
+        'gather_evidence': retrieveDetail,
+        'check_claims': verifyDetail,
+    };
+
     // -- Stage transitions --
     source.addEventListener('stage', function(e) {
         const data = JSON.parse(e.data);
@@ -221,16 +246,9 @@
             activeStage = data.name;
 
             // Show/hide detail panels based on which stage is active
-            hidePanel(youtubeDetail);
-            hidePanel(extractDetail);
-            hidePanel(consolidateDetail);
-            hidePanel(retrieveDetail);
-            hidePanel(verifyDetail);
-            if (data.name === 'fetch_transcript') showPanel(youtubeDetail);
-            else if (data.name === 'extract_claims') showPanel(extractDetail);
-            else if (data.name === 'consolidate_claims') showPanel(consolidateDetail);
-            else if (data.name === 'retrieve_evidence') showPanel(retrieveDetail);
-            else if (data.name === 'check_claims') showPanel(verifyDetail);
+            hideAllPanels();
+            var panel = stagePanels[data.name];
+            if (panel) showPanel(panel);
 
         } else if (data.status === 'completed') {
             el.classList.remove('active');
@@ -238,21 +256,19 @@
             completedStages.add(data.name);
             if (activeStage === data.name) activeStage = null;
 
-            if (data.name === 'fetch_transcript') hidePanel(youtubeDetail);
-            if (data.name === 'extract_claims') hidePanel(extractDetail);
-            if (data.name === 'consolidate_claims') hidePanel(consolidateDetail);
-            if (data.name === 'retrieve_evidence') hidePanel(retrieveDetail);
-            if (data.name === 'check_claims') hidePanel(verifyDetail);
+            // Hide the detail panel for this stage
+            var panel = stagePanels[data.name];
+            if (panel) hidePanel(panel);
         }
     });
 
     // -- YouTube transcript fetch progress --
     source.addEventListener('youtube_progress', function(e) {
         const d = JSON.parse(e.data);
-        showPanel(youtubeDetail);
+        showPanel(prepareDetail);
 
-        const msg = document.getElementById('youtube-message');
-        const srcEl = document.getElementById('youtube-source');
+        const msg = document.getElementById('prepare-message');
+        const srcEl = document.getElementById('prepare-source');
 
         if (d.status === 'extracting_id') {
             msg.textContent = 'Parsing YouTube URL...';
@@ -277,11 +293,20 @@
         }
     });
 
+    // -- Run info update (video title / channel from YouTube metadata) --
+    source.addEventListener('run_info', function(e) {
+        const d = JSON.parse(e.data);
+        if (d.video_title) {
+            document.getElementById('run-title').textContent = 'Fact-Checking Video: ' + d.video_title;
+        }
+        if (d.channel) {
+            document.getElementById('run-channel').textContent = d.channel;
+        }
+    });
+
     // -- Extract claims progress --
     source.addEventListener('extract_progress', function(e) {
         const d = JSON.parse(e.data);
-
-        // Show panel in case stage event was missed
         showPanel(extractDetail);
 
         const bar = document.getElementById('extract-bar');
@@ -295,7 +320,6 @@
 
         if (d.claims_so_far !== undefined) {
             claimsEl.textContent = d.claims_so_far;
-            // Also update the main claims counter during extraction
             document.getElementById('cnt-claims').textContent = d.claims_so_far;
         }
 
@@ -317,14 +341,17 @@
         }
     });
 
-    // -- Consolidate claims progress --
+    // -- Consolidate claims progress (shown inline in extract panel) --
     source.addEventListener('consolidate_progress', function(e) {
         const d = JSON.parse(e.data);
-        showPanel(consolidateDetail);
+        showPanel(extractDetail);
 
+        const statsDiv = document.getElementById('consolidate-stats');
         const msg = document.getElementById('consolidate-message');
         const dupesEl = document.getElementById('consolidate-dupes');
         const groupsEl = document.getElementById('consolidate-groups');
+
+        statsDiv.style.display = 'block';
 
         if (d.status === 'analyzing') {
             msg.textContent = 'Analyzing ' + d.total_claims + ' claims for duplicates and narrative groups...';
@@ -344,8 +371,6 @@
     // -- Retrieve evidence progress --
     source.addEventListener('retrieve_progress', function(e) {
         const d = JSON.parse(e.data);
-
-        // Show panel in case stage event was missed
         showPanel(retrieveDetail);
 
         const bar = document.getElementById('retrieve-bar');
@@ -440,12 +465,7 @@
         statusBadge.textContent = doneStatus;
         statusBadge.className = 'badge badge-' + doneStatus;
 
-        hidePanel(youtubeDetail);
-        hidePanel(extractDetail);
-        hidePanel(consolidateDetail);
-        hidePanel(retrieveDetail);
-        hidePanel(verifyDetail);
-
+        hideAllPanels();
         document.getElementById('stop-container').style.display = 'none';
 
         document.querySelectorAll('.stage-box.active').forEach(function(el) {
@@ -465,25 +485,17 @@
 
     // -- Pipeline error --
     source.addEventListener('error', function(e) {
-        // EventSource fires 'error' for both connection issues and server-sent error events
         let msg = 'Connection error';
         try {
             const data = JSON.parse(e.data);
             msg = data.message || msg;
-            // This is a server-sent error event
             statusBadge.textContent = 'error';
             statusBadge.className = 'badge badge-error';
-            hidePanel(youtubeDetail);
-            hidePanel(extractDetail);
-            hidePanel(consolidateDetail);
-            hidePanel(retrieveDetail);
-            hidePanel(verifyDetail);
+            hideAllPanels();
             document.getElementById('stop-container').style.display = 'none';
             addLog('ERROR: ' + msg);
             source.close();
         } catch(_) {
-            // This is a connection error from EventSource itself
-            // Don't close — EventSource will auto-reconnect
             console.log('SSE connection error, will retry...');
         }
     });

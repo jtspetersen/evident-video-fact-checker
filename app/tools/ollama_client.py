@@ -1,7 +1,39 @@
 # app/tools/ollama_client.py
 import time
+import threading
 import requests
 import json
+
+# ── Token-usage accumulator (mirrors FETCH_STATS in fetch.py) ──
+_LLM_LOCK = threading.Lock()
+LLM_STATS = {"prompt_tokens": 0, "completion_tokens": 0, "llm_calls": 0}
+
+
+def get_llm_stats() -> dict:
+    """Return a copy of current cumulative token stats."""
+    with _LLM_LOCK:
+        return dict(LLM_STATS)
+
+
+def snapshot_llm_stats() -> dict:
+    """Return a snapshot for later delta calculation."""
+    return get_llm_stats()
+
+
+def reset_llm_stats():
+    """Zero all counters (call at pipeline start)."""
+    with _LLM_LOCK:
+        for k in LLM_STATS:
+            LLM_STATS[k] = 0
+
+
+def _accum_tokens(prompt_tokens: int, completion_tokens: int):
+    """Thread-safe accumulation of token counts."""
+    with _LLM_LOCK:
+        LLM_STATS["prompt_tokens"] += prompt_tokens
+        LLM_STATS["completion_tokens"] += completion_tokens
+        LLM_STATS["llm_calls"] += 1
+
 
 def ollama_chat(
     base_url: str,
@@ -62,6 +94,12 @@ def ollama_chat(
                                 continue
                 content = "".join(content_chunks)
 
+                # Accumulate token stats from streaming done message
+                _accum_tokens(
+                    done_info.get("prompt_eval_count", 0),
+                    done_info.get("eval_count", 0),
+                )
+
                 # Enhanced diagnostic logging for empty content
                 if not content:
                     print(f"WARNING: Ollama returned empty content in streaming mode.", file=sys.stderr)
@@ -80,6 +118,12 @@ def ollama_chat(
                 # Non-streaming mode (original behavior)
                 resp_json = r.json()
                 content = resp_json.get("message", {}).get("content", "")
+
+                # Accumulate token stats
+                _accum_tokens(
+                    resp_json.get("prompt_eval_count", 0),
+                    resp_json.get("eval_count", 0),
+                )
 
                 # Enhanced diagnostic logging for empty content
                 if not content:

@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 
-{% block title %}Evident — Past Runs{% endblock %}
+{% block title %}Evident — Video Fact-check History{% endblock %}
 
 {% block content %}
 <hgroup>
-    <h1>Past Runs</h1>
+    <h1>Video Fact-check History</h1>
     <p>{{ runs|length }} run{{ 's' if runs|length != 1 else '' }} recorded.</p>
 </hgroup>
 
@@ -13,7 +13,9 @@
     <thead>
         <tr>
             <th>Date</th>
-            <th>Run ID</th>
+            <th>ID</th>
+            <th>Video Title</th>
+            <th>Channel</th>
             <th>Verdicts</th>
             <th>Duration</th>
             <th></th>
@@ -24,6 +26,8 @@
         <tr>
             <td><small>{{ r.get('timestamp', '')[:19] }}</small></td>
             <td><code>{{ r.get('run_id', '?') }}</code></td>
+            <td>{{ r.get('video_title') or '—' }}</td>
+            <td>{{ r.get('channel') or '—' }}</td>
             <td>
                 {% set vc = r.get('verdict_counts', {}) %}
                 {% for rating in ['TRUE', 'LIKELY TRUE', 'INSUFFICIENT EVIDENCE', 'CONFLICTING EVIDENCE', 'LIKELY FALSE', 'FALSE'] %}

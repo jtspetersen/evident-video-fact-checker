@@ -1,46 +1,49 @@
 {% extends "base.html" %}
 
-{% block title %}Evident — New Fact-Check Run{% endblock %}
+{% block title %}Evident — Video Fact-checker{% endblock %}
 
 {% block content %}
 <hgroup>
-    <h1>New Fact-Check Run</h1>
-    <p>Upload a transcript or provide a YouTube URL to begin fact-checking.</p>
+    <h1>Video Fact-checker</h1>
+    <p>Provide a YouTube URL or upload a transcript to begin fact-checking.</p>
 </hgroup>
 
 <!-- Input mode toggle -->
 <div role="group" style="margin-bottom:1rem;">
-    <button type="button" id="mode-file-btn" onclick="setMode('file')">Upload File</button>
-    <button type="button" id="mode-url-btn" class="secondary" onclick="setMode('url')">YouTube URL</button>
+    <button type="button" id="mode-url-btn" onclick="setMode('url')">YouTube URL</button>
+    <button type="button" id="mode-file-btn" class="secondary" onclick="setMode('file')">Upload File</button>
 </div>
 
-<form action="/upload" method="post" enctype="multipart/form-data" id="main-form">
-    <!-- File input section (visible by default) -->
-    <div id="file-input-section">
-        <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
-            <p><strong>Drag &amp; drop a transcript file here</strong></p>
-            <p><small>or click to browse (.txt, .md)</small></p>
-            <input type="file" name="transcript" id="file-input" accept=".txt,.md" required>
-            <p id="file-name" style="display:none; margin-top:0.5rem;"></p>
-        </div>
-    </div>
-
-    <!-- YouTube URL input section (hidden by default) -->
-    <div id="url-input-section" style="display:none;">
+<form action="/url" method="post" enctype="application/x-www-form-urlencoded" id="main-form" novalidate>
+    <!-- YouTube URL input section (visible by default) -->
+    <div id="url-input-section">
         <label for="youtube-url">
             YouTube Video URL
             <input type="url" name="youtube_url" id="youtube-url"
-                   placeholder="https://www.youtube.com/watch?v=...">
+                   placeholder="https://www.youtube.com/watch?v=..." required>
         </label>
         <small>Supports youtube.com/watch, youtu.be, shorts, and embed URLs</small>
     </div>
 
-    <!-- Channel name -->
-    <label for="channel" style="margin-top:1rem;">
-        Channel / Creator Name
-        <input type="text" name="channel" id="channel"
-               placeholder="Auto-inferred from filename or YouTube metadata if left blank">
-    </label>
+    <!-- File input section (hidden by default) -->
+    <div id="file-input-section" style="display:none;">
+        <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+            <p><strong>Drag &amp; drop a transcript file here</strong></p>
+            <p><small>or click to browse (.txt, .md)</small></p>
+            <input type="file" name="transcript" id="file-input" accept=".txt,.md">
+            <p id="file-name" style="display:none; margin-top:0.5rem;"></p>
+        </div>
+
+        <label for="video-title" style="margin-top:1rem;">
+            Video Title
+            <input type="text" name="video_title" id="video-title">
+        </label>
+
+        <label for="channel">
+            Channel / Creator Name
+            <input type="text" name="channel" id="channel">
+        </label>
+    </div>
 
     <!-- Options -->
     <fieldset>
@@ -52,7 +55,7 @@
     </fieldset>
 
     <!-- Submit -->
-    <button type="submit" id="submit-btn">Start Fact-Check</button>
+    <button type="submit" id="submit-btn">Fetch & Fact-Check</button>
 </form>
 {% endblock %}
 
@@ -69,8 +72,10 @@
     const urlInput = document.getElementById('youtube-url');
     const fileModeBtn = document.getElementById('mode-file-btn');
     const urlModeBtn = document.getElementById('mode-url-btn');
+    const videoTitleInput = document.getElementById('video-title');
+    const channelInput = document.getElementById('channel');
 
-    let currentMode = 'file';
+    let currentMode = 'url';
 
     // Mode toggle
     window.setMode = function(mode) {
@@ -100,6 +105,50 @@
         }
     };
 
+    // Custom validation on submit
+    form.addEventListener('submit', function(e) {
+        if (currentMode === 'url') {
+            if (!urlInput.value.trim()) {
+                e.preventDefault();
+                urlInput.setCustomValidity('Please enter a YouTube URL.');
+                urlInput.reportValidity();
+                return;
+            }
+            urlInput.setCustomValidity('');
+        } else {
+            if (!fileInput.files.length) {
+                e.preventDefault();
+                fileInput.setCustomValidity('Please select a transcript file.');
+                fileInput.reportValidity();
+                return;
+            }
+            fileInput.setCustomValidity('');
+            if (!videoTitleInput.value.trim()) {
+                e.preventDefault();
+                videoTitleInput.setCustomValidity('Please enter the video title.');
+                videoTitleInput.reportValidity();
+                return;
+            }
+            videoTitleInput.setCustomValidity('');
+            if (!channelInput.value.trim()) {
+                e.preventDefault();
+                channelInput.setCustomValidity('Please enter the channel or creator name.');
+                channelInput.reportValidity();
+                return;
+            }
+            channelInput.setCustomValidity('');
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.setAttribute('aria-busy', 'true');
+        submitBtn.textContent = currentMode === 'url' ? 'Fetching...' : 'Starting...';
+    });
+
+    // Clear custom validity on input
+    urlInput.addEventListener('input', function() { this.setCustomValidity(''); });
+    videoTitleInput.addEventListener('input', function() { this.setCustomValidity(''); });
+    channelInput.addEventListener('input', function() { this.setCustomValidity(''); });
+
     // Drag & drop
     ['dragenter', 'dragover'].forEach(evt => {
         dropZone.addEventListener(evt, e => {
@@ -125,6 +174,7 @@
     fileInput.addEventListener('change', () => {
         if (fileInput.files.length > 0) {
             showFileName(fileInput.files[0].name);
+            fileInput.setCustomValidity('');
         }
     });
 
@@ -132,13 +182,6 @@
         fileName.textContent = 'Selected: ' + name;
         fileName.style.display = 'block';
     }
-
-    // Prevent double submit
-    form.addEventListener('submit', () => {
-        submitBtn.disabled = true;
-        submitBtn.setAttribute('aria-busy', 'true');
-        submitBtn.textContent = currentMode === 'url' ? 'Fetching...' : 'Starting...';
-    });
 })();
 </script>
 {% endblock %}

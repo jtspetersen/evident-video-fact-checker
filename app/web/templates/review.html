@@ -1,12 +1,39 @@
 {% extends "base.html" %}
 
-{% block title %}Evident — Review Claims ({{ run_id }}){% endblock %}
+{% block title %}Evident — {{ runner.video_title or run_id }}{% endblock %}
 
 {% block content %}
 <hgroup>
-    <h1>Review Claims</h1>
-    <p>Run <strong>{{ run_id }}</strong> &mdash; {{ claims|length }} claims extracted. Review, edit, or drop claims before verification.</p>
+    <h1>Fact-Checking Video: {{ runner.video_title or 'Loading...' }}</h1>
+    <p>
+        Channel: <strong>{{ runner.channel }}</strong>
+        &mdash;
+        Status: <span class="badge badge-review">review</span>
+    </p>
 </hgroup>
+
+<!-- Stage timeline -->
+{% set stage_labels = {
+    "prepare_transcript": "Prepare Transcript",
+    "extract_claims": "Extract Claims",
+    "review_claims": "Review Claims",
+    "gather_evidence": "Gather Evidence",
+    "check_claims": "Check Claims",
+    "fact_check_summary": "Fact-Check Summary",
+} %}
+{% set timings = runner.manifest.get('timings', {}) %}
+<div class="stage-timeline" id="stage-timeline">
+    {% for stage in runner.STAGE_ORDER %}
+    {% set t = timings.get(stage, {}) %}
+    <div class="stage-box{% if t.get('finished_utc') %} completed{% elif runner.current_stage == stage %} active{% elif t.get('skipped') %} skipped{% endif %}"
+         id="stage-{{ stage }}" data-stage="{{ stage }}">
+        {{ stage_labels.get(stage, stage.replace('_', ' ').title()) }}
+    </div>
+    {% endfor %}
+</div>
+
+<h2 style="font-size:1.15em;">Review Extracted Claims</h2>
+<p>{{ claims|length }} claims extracted. Select claims you would like to verify.</p>
 
 <form id="review-form">
     <table>
@@ -16,7 +43,7 @@
                 <th style="width:5rem;">ID</th>
                 <th style="width:8rem;">Type</th>
                 <th>Claim</th>
-                <th style="width:5rem;">Edit</th>
+                {# <th style="width:5rem;">Edit</th> — DEPRECATED: edit feature disabled #}
             </tr>
         </thead>
         <tbody>
@@ -34,6 +61,15 @@
                 </td>
                 <td>
                     <div class="claim-text" id="text-{{ c.claim_id }}">{{ c.claim_text }}</div>
+                    {% if c.quote_from_transcript %}
+                    <details style="margin-top:0.3rem;">
+                        <summary><small>Transcript quote</small></summary>
+                        <small style="color:var(--pico-muted-color);">{{ c.quote_from_transcript[:300] }}{% if c.quote_from_transcript|length > 300 %}...{% endif %}</small>
+                    </details>
+                    {% endif %}
+                </td>
+                {# DEPRECATED: edit feature — uncomment to re-enable
+                <td>
                     <div class="edit-panel" id="edit-{{ c.claim_id }}" style="display:none; margin-top:0.5rem;">
                         <label>
                             <small>Claim text:</small>
@@ -52,20 +88,13 @@
                             </select>
                         </label>
                     </div>
-                    {% if c.quote_from_transcript %}
-                    <details style="margin-top:0.3rem;">
-                        <summary><small>Transcript quote</small></summary>
-                        <small style="color:var(--pico-muted-color);">{{ c.quote_from_transcript[:300] }}{% if c.quote_from_transcript|length > 300 %}...{% endif %}</small>
-                    </details>
-                    {% endif %}
-                </td>
-                <td>
                     <button type="button" class="outline secondary edit-btn"
                             data-claim-id="{{ c.claim_id }}"
                             style="padding:0.3em 0.6em; font-size:0.8em;">
                         Edit
                     </button>
                 </td>
+                #}
             </tr>
             {% endfor %}
         </tbody>
@@ -85,17 +114,6 @@
 (function() {
     const runId = '{{ run_id }}';
 
-    // Toggle edit panel
-    document.querySelectorAll('.edit-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const cid = this.dataset.claimId;
-            const panel = document.getElementById('edit-' + cid);
-            const showing = panel.style.display !== 'none';
-            panel.style.display = showing ? 'none' : 'block';
-            this.textContent = showing ? 'Edit' : 'Close';
-        });
-    });
-
     // Keep all
     document.getElementById('keep-all').addEventListener('click', function() {
         document.querySelectorAll('.keep-check').forEach(cb => { cb.checked = true; });
@@ -111,22 +129,10 @@
         document.querySelectorAll('tr[data-claim-id]').forEach(row => {
             const claimId = row.dataset.claimId;
             const kept = row.querySelector('.keep-check').checked;
-            const editPanel = document.getElementById('edit-' + claimId);
-            const isEdited = editPanel.style.display !== 'none';
-
-            if (!kept) {
-                decisions.push({ claim_id: claimId, action: 'drop' });
-            } else if (isEdited) {
-                decisions.push({
-                    claim_id: claimId,
-                    action: 'edit',
-                    claim_text: editPanel.querySelector('.edit-claim-text').value,
-                    quote_from_transcript: editPanel.querySelector('.edit-quote').value,
-                    claim_type: editPanel.querySelector('.edit-type').value,
-                });
-            } else {
-                decisions.push({ claim_id: claimId, action: 'keep' });
-            }
+            decisions.push({
+                claim_id: claimId,
+                action: kept ? 'keep' : 'drop',
+            });
         });
 
         fetch('/run/' + runId + '/review', {
@@ -141,6 +147,18 @@
             btn.removeAttribute('aria-busy');
         });
     });
+
+    /* DEPRECATED: edit feature JS — uncomment to re-enable
+    document.querySelectorAll('.edit-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const cid = this.dataset.claimId;
+            const panel = document.getElementById('edit-' + cid);
+            const showing = panel.style.display !== 'none';
+            panel.style.display = showing ? 'none' : 'block';
+            this.textContent = showing ? 'Edit' : 'Close';
+        });
+    });
+    */
 })();
 </script>
 {% endblock %}

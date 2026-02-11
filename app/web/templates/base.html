@@ -12,8 +12,17 @@
             --pico-font-family-sans-serif: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
         }
         nav .brand {
-            font-weight: 700;
-            font-size: 1.2rem;
+            display: inline-flex;
+            align-items: center;
+        }
+        nav .brand img {
+            height: 100px;
+            width: 100px;
+            object-fit: contain;
+        }
+        nav ul li a[role="button"] {
+            padding: 0.4em 1em;
+            font-size: 0.9rem;
         }
         .badge {
             display: inline-block;
@@ -112,6 +121,7 @@
             font-style: italic;
         }
 
+        h1 { font-size: 1.5em; }
         footer { margin-top: 2rem; text-align: center; font-size: 0.85em; }
     </style>
     {% block head %}{% endblock %}
@@ -119,13 +129,14 @@
 <body>
     <nav class="container-fluid">
         <ul>
-            <li><a href="/" class="brand">Evident</a></li>
+            <li><a href="/" class="brand"><img src="/images/Evident_logo.png" alt="Evident"></a></li>
         </ul>
         <ul>
-            <li><a href="/">New Run</a></li>
-            <li><a href="/runs">Past Runs</a></li>
+            <li><a href="/" role="button">Start New</a></li>
+            <li><a href="/runs" role="button" class="secondary">History</a></li>
         </ul>
     </nav>
+    <hr style="margin:0;">
 
     <main class="container">
         {% block content %}{% endblock %}

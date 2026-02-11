@@ -1,30 +1,24 @@
 {% extends "base.html" %}
 
-{% block title %}Evident — Report ({{ run_id }}){% endblock %}
+{% block title %}Evident — {{ video_title or run_id }}{% endblock %}
 
 {% block content %}
-<hgroup>
-    <h1>Fact-Check Report</h1>
-    <p>Run <strong>{{ run_id }}</strong></p>
-</hgroup>
+<h1>Video Fact-check Report</h1>
 
-<!-- Verdict summary -->
-{% if scorecard %}
-<div style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap; margin-bottom:1.5rem; padding:1rem; border-radius:8px; background:var(--pico-card-background-color);">
-    {% set vc = scorecard.get('verdict_counts', {}) %}
-    {% for rating in ['TRUE', 'LIKELY TRUE', 'INSUFFICIENT EVIDENCE', 'CONFLICTING EVIDENCE', 'LIKELY FALSE', 'FALSE'] %}
-        {% set count = vc.get(rating, 0) %}
-        {% if count > 0 %}
-        <span class="badge badge-{{ rating.lower().replace(' ', '-') }}" style="margin-right:0.3rem;">
-            {{ rating }}: {{ count }}
-        </span>
-        {% endif %}
-    {% endfor %}
-</div>
-{% endif %}
+<!-- Rendered report -->
+<article class="report-content">
+    <p>
+        <strong>Video Title:</strong> {{ video_title or '—' }}<br>
+        <strong>Channel:</strong> {{ channel or '—' }}<br>
+        <strong>ID:</strong> <code>{{ run_id }}</code>
+        &mdash;
+        <strong>Date:</strong> {{ run_date or '—' }}
+    </p>
+    {{ report_html | safe }}
+</article>
 
 <!-- Download links -->
-<details style="margin-bottom:1rem;">
+<details style="margin-bottom:1rem; background-color:#f4f4f4; padding:1em; border-radius:0.3em;">
     <summary>Download Artifacts</summary>
     <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-top:0.5rem;">
         {% set artifacts = manifest.get('artifacts', {}) %}
@@ -59,14 +53,9 @@
     </div>
 </details>
 
-<!-- Rendered report -->
-<article class="report-content">
-    {{ report_html | safe }}
-</article>
-
 <!-- Navigation -->
 <div style="margin-top:2rem; display:flex; gap:1rem;">
-    <a href="/" role="button" class="outline">New Run</a>
-    <a href="/runs" role="button" class="outline secondary">Past Runs</a>
+    <a href="/" role="button" class="outline">Start New</a>
+    <a href="/runs" role="button" class="outline secondary">History</a>
 </div>
 {% endblock %}

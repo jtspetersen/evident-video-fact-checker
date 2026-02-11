@@ -15,6 +15,7 @@ from app.tools.logger import make_run_logger
 from app.store.run_index import append_run_index
 from app.store.creator_profiles import append_creator_profile_event
 from app.tools.fetch import FETCH_STATS  # cache/network stats
+from app.tools.ollama_client import get_llm_stats, reset_llm_stats, snapshot_llm_stats
 from app.tools.review import review_claims_interactive
 
 from app.pipeline.ingest import normalize_transcript, write_json
@@ -179,10 +180,14 @@ def write_run_manifest(outdir: str, manifest: dict) -> None:
         json.dump(manifest, f, ensure_ascii=False, indent=2)
 
 
+_stage_token_snapshot = {}  # stage_key -> token snapshot at start
+
+
 def stage_start(manifest: dict, stage_key: str) -> float:
     manifest.setdefault("timings", {})
     manifest["timings"].setdefault(stage_key, {})
     manifest["timings"][stage_key]["started_utc"] = utc_now_iso()
+    _stage_token_snapshot[stage_key] = snapshot_llm_stats()
     return time.perf_counter()
 
 
@@ -190,6 +195,12 @@ def stage_end(manifest: dict, stage_key: str, perf_start: float) -> float:
     dur = time.perf_counter() - perf_start
     manifest["timings"][stage_key]["finished_utc"] = utc_now_iso()
     manifest["timings"][stage_key]["duration_sec"] = round(dur, 4)
+    # Token delta for this stage
+    snap = _stage_token_snapshot.pop(stage_key, None) or {}
+    current = snapshot_llm_stats()
+    delta = {k: current.get(k, 0) - snap.get(k, 0) for k in current}
+    if delta.get("llm_calls", 0) > 0:
+        manifest["timings"][stage_key]["tokens"] = delta
     return dur
 
 
@@ -451,6 +462,7 @@ def main():
     write_artifacts_index(outdir, manifest)
 
     try:
+        reset_llm_stats()
         log.log(f"RUN START run_id={run_id} infile={infile} channel={channel}")
         log.log(f"Outdir: {outdir}")
 
@@ -781,13 +793,25 @@ def main():
 
         manifest["status"] = "ok"
 
+        # Store run-level token totals
+        token_totals = get_llm_stats()
+        token_totals["total_tokens"] = token_totals["prompt_tokens"] + token_totals["completion_tokens"]
+        manifest["token_usage"] = token_totals
+
         # Run index
+        video_title = None
+        if yt_meta and yt_meta.get("title"):
+            video_title = yt_meta["title"]
+        elif transcript_base and transcript_base != "youtube_pending":
+            video_title = transcript_base
         append_run_index(
             run_id=manifest["run_id"],
             input_file=manifest["infile"],
             outdir=manifest["outdir"],
             verdict_counts=manifest["scorecard"]["verdict_counts"],
             duration_sec=time.time() - t0,
+            video_title=video_title,
+            channel=channel,
         )
 
         # Creator profile memory

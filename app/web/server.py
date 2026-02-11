@@ -11,6 +11,7 @@ import asyncio
 import json
 import os
 import queue
+import re
 from pathlib import Path
 
 import markdown
@@ -30,8 +31,11 @@ WEB_DIR = Path(__file__).parent
 TEMPLATES_DIR = WEB_DIR / "templates"
 STATIC_DIR = WEB_DIR / "static"
 
+IMAGES_DIR = WEB_DIR / "images"
+
 app = FastAPI(title="Evident Video Fact Checker")
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+app.mount("/images", StaticFiles(directory=str(IMAGES_DIR)), name="images")
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 
@@ -50,6 +54,7 @@ async def upload(
     request: Request,
     transcript: UploadFile = File(...),
     channel: str = Form(""),
+    video_title: str = Form(""),
     review: bool = Form(False),
 ):
     """Accept transcript upload, start pipeline, redirect to progress."""
@@ -73,6 +78,8 @@ async def upload(
         channel=channel.strip() or None,
         review_enabled=review,
     )
+    if video_title.strip():
+        runner.video_title = video_title.strip()
     runner.start()
 
     return RedirectResponse(url=f"/run/{runner.run_id}", status_code=303)
@@ -191,6 +198,7 @@ async def review_page(request: Request, run_id: str):
         "request": request,
         "run_id": run_id,
         "claims": claims_data,
+        "runner": runner,
     })
 
 
@@ -245,12 +253,30 @@ async def report_page(request: Request, run_id: str):
             "message": f"Report for run {run_id} not available yet.",
         }, status_code=404)
 
+    # Resolve video title and channel from manifest
+    video_title = (
+        manifest.get("video_title")
+        or (manifest.get("youtube_metadata") or {}).get("title")
+        or manifest.get("transcript", {}).get("base")
+    )
+    if not video_title and manifest.get("infile"):
+        base = os.path.basename(manifest["infile"])
+        video_title = re.sub(r"\.(txt|md)$", "", base, flags=re.IGNORECASE)
+    channel = (manifest.get("channel") or {}).get("raw") or None
+    run_date = manifest.get("started_utc", "")[:19] or manifest.get("finished_utc", "")[:19]
+
+    # Strip the LLM-generated H1 ("Evident Fact-Check Report: ...") —
+    # replaced by template metadata block
+    report_html = re.sub(r"<h1>.*?</h1>\s*", "", report_html, count=1)
+
     return templates.TemplateResponse("report.html", {
         "request": request,
         "run_id": run_id,
         "report_html": report_html,
         "manifest": manifest,
-        "scorecard": scorecard,
+        "video_title": video_title,
+        "channel": channel,
+        "run_date": run_date,
     })
 
 
@@ -287,6 +313,31 @@ async def runs_list(request: Request):
                         runs.append(json.loads(line))
                     except json.JSONDecodeError:
                         pass
+
+    # Enrich old records missing video_title/channel from manifest
+    for r in runs:
+        if not r.get("video_title") or not r.get("channel"):
+            outdir = r.get("outdir", "")
+            manifest_path = os.path.join(outdir, "run.json") if outdir else ""
+            if manifest_path and os.path.isfile(manifest_path):
+                try:
+                    with open(manifest_path, "r", encoding="utf-8") as mf:
+                        m = json.load(mf)
+                    if not r.get("video_title"):
+                        r["video_title"] = (
+                            m.get("video_title")
+                            or (m.get("youtube_metadata") or {}).get("title")
+                            or m.get("transcript", {}).get("base")
+                        )
+                    if not r.get("channel"):
+                        r["channel"] = (m.get("channel") or {}).get("raw")
+                except (json.JSONDecodeError, OSError):
+                    pass
+            # Final fallback: derive from input_file
+            if not r.get("video_title") and r.get("input_file"):
+                base = os.path.basename(r["input_file"])
+                r["video_title"] = re.sub(r"\.(txt|md)$", "", base, flags=re.IGNORECASE)
+
     # Most recent first
     runs.reverse()
 

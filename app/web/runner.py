@@ -20,6 +20,7 @@ from app.tools.logger import make_run_logger
 from app.store.run_index import append_run_index
 from app.store.creator_profiles import append_creator_profile_event
 from app.tools.fetch import FETCH_STATS
+from app.tools.ollama_client import get_llm_stats, reset_llm_stats, snapshot_llm_stats
 
 from app.pipeline.ingest import normalize_transcript, write_json
 from app.pipeline.extract_claims import extract_claims
@@ -118,14 +119,11 @@ class PipelineRunner:
     """
 
     STAGE_ORDER = [
-        "fetch_transcript",
-        "normalize_transcript",
+        "prepare_transcript",
         "extract_claims",
-        "consolidate_claims",
         "review_claims",
-        "retrieve_evidence",
+        "gather_evidence",
         "check_claims",
-        "scorecard",
         "fact_check_summary",
     ]
 
@@ -149,9 +147,11 @@ class PipelineRunner:
         if infile:
             transcript_name = os.path.basename(infile)
             transcript_base = re.sub(r"\.(txt|md)$", "", transcript_name, flags=re.IGNORECASE)
+            self.video_title = transcript_base
         else:
             transcript_name = "youtube_pending"
             transcript_base = "youtube_pending"
+            self.video_title = None  # Updated after YouTube metadata fetch
         channel_slug = _slugify(self.channel, max_len=40)
         transcript_slug = _slugify(transcript_base, max_len=60)
 
@@ -240,6 +240,7 @@ class PipelineRunner:
         self.manifest["timings"].setdefault(stage_key, {})
         self.manifest["timings"][stage_key]["started_utc"] = _utc_now_iso()
         self.current_stage = stage_key
+        self._token_snapshot = snapshot_llm_stats()
         self.emit("stage", {"name": stage_key, "status": "started"})
         return time.perf_counter()
 
@@ -247,6 +248,12 @@ class PipelineRunner:
         dur = time.perf_counter() - perf_start
         self.manifest["timings"][stage_key]["finished_utc"] = _utc_now_iso()
         self.manifest["timings"][stage_key]["duration_sec"] = round(dur, 4)
+        # Token delta for this stage
+        current = snapshot_llm_stats()
+        snap = getattr(self, "_token_snapshot", None) or {}
+        delta = {k: current.get(k, 0) - snap.get(k, 0) for k in current}
+        if delta.get("llm_calls", 0) > 0:
+            self.manifest["timings"][stage_key]["tokens"] = delta
         self.emit("stage", {"name": stage_key, "status": "completed", "duration_sec": round(dur, 2)})
         return dur
 
@@ -271,6 +278,7 @@ class PipelineRunner:
 
         self.status = "running"
         self.emit("status", {"status": "running"})
+        reset_llm_stats()
 
         if self.infile:
             transcript_name = os.path.basename(self.infile)
@@ -300,6 +308,7 @@ class PipelineRunner:
                 "slug": transcript_slug,
             },
             "outdir": self.outdir,
+            "video_title": self.video_title,
             "youtube_url": self.youtube_url,
             "transcript_source": "youtube" if self.youtube_url else "file",
             "youtube_metadata": None,
@@ -356,11 +365,12 @@ class PipelineRunner:
         try:
             self._log_and_emit(log, f"RUN START run_id={self.run_id} channel={self.channel}")
 
-            # ----- Stage 0 (conditional): Fetch YouTube transcript -----
+            # ----- Stage: Prepare Transcript (fetch + normalize) -----
+            self._check_stop()
+            s = self._stage_start("prepare_transcript")
+
             if self.youtube_url:
-                self._check_stop()
                 self._log_and_emit(log, f"Fetching YouTube transcript from {self.youtube_url}")
-                s = self._stage_start("fetch_transcript")
 
                 from app.tools.youtube import fetch_youtube_transcript
 
@@ -378,9 +388,15 @@ class PipelineRunner:
                 self.raw_text = yt_result["raw_text"]
                 meta = yt_result["metadata"]
 
-                # Auto-set channel from YouTube metadata
+                # Auto-set channel and video title from YouTube metadata
                 if meta.get("channel") and self.channel in ("Unknown", ""):
                     self.channel = meta["channel"]
+                if meta.get("title"):
+                    self.video_title = meta["title"]
+                self.emit("run_info", {
+                    "video_title": self.video_title,
+                    "channel": self.channel,
+                })
 
                 # Save transcript to inbox/ and update self.infile
                 safe_title = _slugify(meta.get("title") or yt_result["video_id"], max_len=80)
@@ -397,6 +413,7 @@ class PipelineRunner:
 
                 # Update manifest with YouTube info
                 self.manifest["youtube_metadata"] = meta
+                self.manifest["video_title"] = self.video_title
                 self.manifest["transcript_source"] = yt_result.get("source", "unknown")
                 self.manifest["channel"]["raw"] = self.channel
                 self.manifest["channel"]["inferred"] = self.channel
@@ -418,19 +435,12 @@ class PipelineRunner:
                     except OSError:
                         pass  # Keep original if rename fails
 
-                self._stage_end("fetch_transcript", s)
                 self._log_and_emit(log, f"YouTube transcript fetched ({yt_result['source']}): {len(self.raw_text)} chars")
                 self._save_manifest()
                 self._check_stop()
-            else:
-                # Mark fetch_transcript as skipped for file-upload runs
-                self.manifest.setdefault("timings", {})
-                self.manifest["timings"]["fetch_transcript"] = {"skipped": True}
 
-            # ----- Stage 1: Normalize transcript -----
-            self._check_stop()
-            self._log_and_emit(log, "Stage 1: normalize transcript")
-            s = self._stage_start("normalize_transcript")
+            # Normalize
+            self._log_and_emit(log, "Normalizing transcript")
             transcript_json = normalize_transcript(self.raw_text)
             # Populate video metadata from YouTube if available
             if self.manifest.get("youtube_metadata"):
@@ -439,13 +449,13 @@ class PipelineRunner:
                 transcript_json["video"]["url"] = yt_meta.get("url")
                 transcript_json["video"]["channel"] = yt_meta.get("channel")
             write_json(os.path.join(self.outdir, "01_transcript.normalized.json"), transcript_json)
-            self._stage_end("normalize_transcript", s)
+            self._stage_end("prepare_transcript", s)
             self._add_artifact("transcript_normalized", "01_transcript.normalized.json")
             self._save_manifest()
 
-            # ----- Stage 2: Extract claims -----
+            # ----- Stage: Extract Claims (extract + consolidate) -----
             self._check_stop()
-            self._log_and_emit(log, "Stage 2: extract claims")
+            self._log_and_emit(log, "Extracting claims")
             s = self._stage_start("extract_claims")
 
             def _extract_progress(data):
@@ -480,17 +490,14 @@ class PipelineRunner:
                 "claims_extracted": len(claims),
             })
 
-            self._stage_end("extract_claims", s)
-
             with open(os.path.join(self.outdir, "02_claims.json"), "w", encoding="utf-8") as f:
                 json.dump([c.model_dump() for c in claims], f, ensure_ascii=False, indent=2)
             self._add_artifact("claims", "02_claims.json")
             self._save_manifest()
 
-            # ----- Stage 2b: Consolidate claims -----
+            # Consolidate (dedup + narrative grouping) — part of extract stage
             self._check_stop()
-            self._log_and_emit(log, "Stage 2b: consolidate claims")
-            s = self._stage_start("consolidate_claims")
+            self._log_and_emit(log, "Consolidating claims (dedup + narrative groups)")
             groups = []
             if len(claims) >= 2:
                 model_consolidate = cfg["ollama"].get("model_consolidate", cfg["ollama"]["model_extract"])
@@ -526,12 +533,12 @@ class PipelineRunner:
                 self._log_and_emit(log, f"Consolidation: {dupes} duplicates removed, {len(groups)} narrative groups")
             else:
                 self._log_and_emit(log, "Skipping consolidation (fewer than 2 claims)")
-            self._stage_end("consolidate_claims", s)
+            self._stage_end("extract_claims", s)
             self._save_manifest()
 
-            # ----- Stage 2c: Review (pause if enabled) -----
+            # ----- Stage: Review Claims (pause if enabled) -----
             if self.review_enabled:
-                self._log_and_emit(log, "Stage 2b: review claims (waiting for web input)")
+                self._log_and_emit(log, "Review claims (waiting for web input)")
                 s = self._stage_start("review_claims")
                 self.status = "review"
 
@@ -588,10 +595,10 @@ class PipelineRunner:
                 self.groups = groups
                 self.manifest["counts"]["narrative_groups"] = len(groups)
 
-            # ----- Stage 3: Retrieve evidence -----
+            # ----- Stage: Gather Evidence -----
             self._check_stop()
-            self._log_and_emit(log, "Stage 3: retrieve evidence")
-            s = self._stage_start("retrieve_evidence")
+            self._log_and_emit(log, "Gathering evidence")
+            s = self._stage_start("gather_evidence")
 
             budgets = cfg["budgets"]
             deny_domains = cfg.get("searx", {}).get("deny_domains") or []
@@ -658,13 +665,13 @@ class PipelineRunner:
             self.manifest["counts"]["snippets"] = len(snippets)
             self.manifest["counts"]["fetch_failures"] = len(fetch_failures)
             self.emit("progress", {
-                "stage": "retrieve_evidence",
+                "stage": "gather_evidence",
                 "sources": len(sources),
                 "snippets": len(snippets),
                 "fetch_failures": len(fetch_failures),
             })
 
-            self._stage_end("retrieve_evidence", s)
+            self._stage_end("gather_evidence", s)
 
             with open(os.path.join(self.outdir, "03_sources.json"), "w", encoding="utf-8") as f:
                 json.dump(sources, f, ensure_ascii=False, indent=2)
@@ -695,9 +702,9 @@ class PipelineRunner:
             }
             self._save_manifest()
 
-            # ----- Stage 4: Check claims -----
+            # ----- Stage: Check Claims -----
             self._check_stop()
-            self._log_and_emit(log, "Stage 4: check claims")
+            self._log_and_emit(log, "Checking claims")
             s = self._stage_start("check_claims")
 
             from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -792,12 +799,11 @@ class PipelineRunner:
 
             self._save_manifest()
 
-            # ----- Stage 5: Scorecard -----
+            # ----- Stage: Fact-Check Summary (scorecard + report) -----
             self._check_stop()
-            self._log_and_emit(log, "Stage 5: scorecard")
-            s = self._stage_start("scorecard")
+            self._log_and_emit(log, "Generating fact-check summary")
+            s = self._stage_start("fact_check_summary")
             counts, red_flags, tiers = tally(verdicts)
-            self._stage_end("scorecard", s)
 
             scorecard_md = f"""# Evident Scorecard
 
@@ -820,10 +826,8 @@ class PipelineRunner:
             }
             self._save_manifest()
 
-            # ----- Stage 6: Fact-check summary -----
-            self._check_stop()
-            self._log_and_emit(log, "Stage 6: fact-check summary")
-            s = self._stage_start("fact_check_summary")
+            # Write report
+            self._log_and_emit(log, "Writing report")
             writer_md = write_outline_and_script(
                 cfg["ollama"]["base_url"],
                 cfg["ollama"]["model_write"],
@@ -844,12 +848,19 @@ class PipelineRunner:
             # ----- Finalize -----
             self.manifest["status"] = "ok"
 
+            # Store run-level token totals
+            token_totals = get_llm_stats()
+            token_totals["total_tokens"] = token_totals["prompt_tokens"] + token_totals["completion_tokens"]
+            self.manifest["token_usage"] = token_totals
+
             append_run_index(
                 run_id=self.manifest["run_id"],
                 input_file=self.manifest["infile"],
                 outdir=self.manifest["outdir"],
                 verdict_counts=self.manifest["scorecard"]["verdict_counts"],
                 duration_sec=time.time() - t0,
+                video_title=self.video_title,
+                channel=self.channel,
             )
 
             topics = _extract_topics_lightweight(self.raw_text)
