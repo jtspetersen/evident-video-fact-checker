@@ -16,7 +16,7 @@ ollama:
   temperature_query_gen: 0.3          # Slightly creative for query diversity
 
 searx:
-  base_url: "http://localhost:8080"
+  base_url: "http://localhost:8888"
   format: "json"
   num_results: 10
 

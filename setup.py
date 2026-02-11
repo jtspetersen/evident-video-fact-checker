@@ -42,7 +42,7 @@ REQUIREMENTS_FILE = PROJECT_ROOT / "Requirements.txt"
 SEARXNG_DIR = PROJECT_ROOT / "searxng"
 
 OLLAMA_URL = "http://localhost:11434"
-SEARXNG_URL = "http://localhost:8080"
+SEARXNG_URL = "http://localhost:8888"
 
 MODEL_TIERS = [
     # (min_vram, min_ram, label, extract, verify, write)
@@ -634,7 +634,7 @@ def step_models(hw: dict, check_only: bool = False) -> dict:
 # ═══════════════════════════════════════════════════════════════════
 
 def _searxng_is_running() -> bool:
-    resp = http_get(f"{SEARXNG_URL}/search?q=test&format=json")
+    resp = http_get(f"{SEARXNG_URL}/healthz")
     return resp is not None
 
 
@@ -650,11 +650,13 @@ use_default_settings: true
 
 server:
   secret_key: "{secret}"
-  limiter: true
-  image_proxy: true
+  limiter: false
+  public_instance: false
+  image_proxy: false
+  method: "GET"
 
 redis:
-  url: redis://redis:6379/0
+  url: false
 
 ui:
   static_use_hash: true
@@ -662,6 +664,9 @@ ui:
 search:
   safe_search: 0
   autocomplete: ""
+  formats:
+    - html
+    - json
 
 enabled_plugins:
   - 'Hash plugin'
@@ -685,8 +690,9 @@ engines:
     limiter_path = SEARXNG_DIR / "limiter.toml"
     if not limiter_path.exists():
         limiter_path.write_text("""# SearXNG rate limiter config
+# Limiter disabled — this is a local-only API instance
 [botdetection.ip_limit]
-link_token = true
+link_token = false
 """, encoding="utf-8")
         ok("Created searxng/limiter.toml")
     else:

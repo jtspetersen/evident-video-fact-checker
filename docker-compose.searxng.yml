@@ -1,5 +1,5 @@
-# Minimal SearXNG + Redis stack for native Evident setup
-# Used by setup.py — no Ollama or app containers needed
+# Evident Video Fact Checker — SearXNG + Redis
+# Runs on port 8888 to avoid conflicts with other SearXNG instances
 # Start: docker compose -f docker-compose.searxng.yml up -d
 # Stop:  docker compose -f docker-compose.searxng.yml down
 
@@ -9,7 +9,7 @@ services:
     container_name: evident-redis
     restart: unless-stopped
     volumes:
-      - redis-data:/data
+      - evident-redis-data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -24,17 +24,17 @@ services:
     container_name: evident-searxng
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "8888:8080"
     volumes:
       - ./searxng:/etc/searxng:rw
     environment:
-      - SEARXNG_BASE_URL=http://localhost:8080
+      - SEARXNG_BASE_URL=http://localhost:8888
       - BIND_ADDRESS=0.0.0.0:8080
     depends_on:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/search?q=test&format=json"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
       interval: 20s
       timeout: 5s
       retries: 5
@@ -43,7 +43,7 @@ services:
       - evident-net
 
 volumes:
-  redis-data:
+  evident-redis-data:
 
 networks:
   evident-net:

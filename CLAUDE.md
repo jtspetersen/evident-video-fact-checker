@@ -73,7 +73,7 @@ python -m app.web.server
 All config lives in `config.yaml`:
 - `ollama.base_url` — Local Ollama API (default: http://localhost:11434)
 - `ollama.model_extract/verify/write` — Models per pipeline stage
-- `searx.base_url` — Local SearX instance (default: http://localhost:8080)
+- `searx.base_url` — Local SearX instance (default: http://localhost:8888)
 - `budgets.*` — Rate limits (max claims, sources, fetches)
 - `cache.url_cache_days` — URL cache TTL (default: 7 days)
 
