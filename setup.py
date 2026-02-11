@@ -1013,12 +1013,152 @@ def step_validate_and_test(models: dict, check_only: bool = False) -> bool:
 
 
 # ═══════════════════════════════════════════════════════════════════
-# Main
+# Commands: start / stop / status
 # ═══════════════════════════════════════════════════════════════════
 
-def main():
-    check_only = "--check" in sys.argv
+def cmd_start() -> None:
+    """Start all services (SearXNG via Docker, ensure Ollama running)."""
+    os.chdir(PROJECT_ROOT)
+    banner("Starting Services")
 
+    # Ollama
+    resp = http_get(f"{OLLAMA_URL}/api/tags")
+    if resp:
+        ok(f"Ollama already running at {OLLAMA_URL}")
+    else:
+        info("Starting Ollama...")
+        try:
+            if platform.system() == "Windows":
+                subprocess.Popen(
+                    ["ollama", "serve"],
+                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                    creationflags=subprocess.CREATE_NEW_PROCESS_GROUP
+                    | subprocess.DETACHED_PROCESS
+                )
+            else:
+                subprocess.Popen(
+                    ["ollama", "serve"],
+                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                    start_new_session=True
+                )
+            for i in range(12):
+                time.sleep(5)
+                if http_get(f"{OLLAMA_URL}/api/tags"):
+                    ok(f"Ollama started at {OLLAMA_URL}")
+                    break
+                info(f"Waiting... ({(i+1)*5}s)")
+            else:
+                fail("Ollama did not start — try 'ollama serve' manually")
+        except FileNotFoundError:
+            fail("Ollama not installed — run 'python setup.py' first")
+
+    # SearXNG
+    if _searxng_is_running():
+        ok(f"SearXNG already running at {SEARXNG_URL}")
+    else:
+        if not COMPOSE_FILE.exists():
+            fail(f"Missing {COMPOSE_FILE}")
+            return
+        _create_searxng_config()
+        info("Starting SearXNG + Redis...")
+        try:
+            run(["docker", "compose", "-f", str(COMPOSE_FILE), "up", "-d"], timeout=60)
+        except Exception as e:
+            fail(f"Docker Compose failed: {e}")
+            return
+        for i in range(18):
+            time.sleep(5)
+            if _searxng_is_running():
+                ok(f"SearXNG started at {SEARXNG_URL}")
+                break
+            info(f"Waiting... ({(i+1)*5}s)")
+        else:
+            warn("SearXNG still starting — check: docker compose -f docker-compose.searxng.yml logs")
+
+    print()
+
+
+def cmd_stop() -> None:
+    """Stop SearXNG + Redis containers."""
+    os.chdir(PROJECT_ROOT)
+    banner("Stopping Services")
+
+    if COMPOSE_FILE.exists():
+        info("Stopping SearXNG + Redis...")
+        try:
+            run(["docker", "compose", "-f", str(COMPOSE_FILE), "down"], timeout=30)
+            ok("SearXNG + Redis stopped")
+        except Exception as e:
+            fail(f"Failed: {e}")
+    else:
+        warn(f"No {COMPOSE_FILE} found")
+
+    print()
+    info("Ollama runs as a native service — stop it from the system tray or 'taskkill /IM ollama.exe'")
+    print()
+
+
+def cmd_status() -> None:
+    """Show health of all services."""
+    os.chdir(PROJECT_ROOT)
+    banner("Service Status")
+
+    # Ollama
+    resp = http_get(f"{OLLAMA_URL}/api/tags")
+    if resp:
+        ok(f"Ollama running at {OLLAMA_URL}")
+        try:
+            data = json.loads(resp)
+            models = [m["name"] for m in data.get("models", [])]
+            if models:
+                ok(f"Models: {', '.join(models[:6])}{'...' if len(models) > 6 else ''}")
+            else:
+                warn("No models pulled")
+        except (json.JSONDecodeError, KeyError):
+            pass
+
+        # GPU check
+        try:
+            out = run(["ollama", "ps"], capture=True, check=False)
+            if out and out.strip():
+                lines = out.strip().split("\n")
+                if len(lines) > 1:
+                    ok(f"Loaded: {lines[1].strip()}")
+        except Exception:
+            pass
+    else:
+        fail(f"Ollama not responding at {OLLAMA_URL}")
+
+    # SearXNG
+    if _searxng_is_running():
+        ok(f"SearXNG running at {SEARXNG_URL}")
+    else:
+        fail(f"SearXNG not responding at {SEARXNG_URL}")
+
+    # Docker containers
+    if COMPOSE_FILE.exists():
+        try:
+            out = run(["docker", "compose", "-f", str(COMPOSE_FILE), "ps",
+                       "--format", "table {{.Name}}\t{{.Status}}"],
+                      capture=True, check=False)
+            if out:
+                lines = [l for l in out.strip().split("\n") if l.strip()]
+                if len(lines) > 1:  # Has rows beyond header
+                    print()
+                    for line in lines:
+                        info(line)
+        except Exception:
+            pass
+
+    print()
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Main: setup wizard
+# ═══════════════════════════════════════════════════════════════════
+
+def cmd_setup(check_only: bool = False) -> None:
+    """Run the full setup wizard or validation check."""
     mode = "VALIDATE" if check_only else "SETUP"
     print(f"""
 {'=' * 64}
@@ -1040,87 +1180,98 @@ def main():
         print("  Setup cancelled.")
         sys.exit(0)
 
-    # Change to project root so all relative paths work
     os.chdir(PROJECT_ROOT)
 
-    # Step 1: Python & deps
     if not step_python_deps(check_only):
         fail("Cannot continue without Python dependencies")
         sys.exit(1)
 
-    # Step 2: Ollama
     if not step_ollama(check_only):
         fail("Cannot continue without Ollama")
         sys.exit(1)
 
-    # Step 3: Docker & FFmpeg
     if not step_docker_and_ffmpeg(check_only):
         fail("Cannot continue without Docker (needed for SearXNG)")
         sys.exit(1)
 
-    # Step 4: Hardware (always runs — informational)
     hw = step_hardware()
-
-    # Step 5: Models
     models = step_models(hw, check_only)
 
-    # Step 6: SearXNG
     if not step_searxng(check_only):
         warn("SearXNG setup had issues — search may not work")
         if check_only:
             sys.exit(1)
 
-    # Step 7: Config & directories
     if not step_config(models, hw, check_only):
         if check_only:
             sys.exit(1)
 
-    # Step 8: Validate & smoke test
     success = step_validate_and_test(models, check_only)
 
-    # ── Done ──────────────────────────────────────────────────────
     print()
     if success:
         banner("SETUP COMPLETE")
-        print("""  Everything is working! Here's how to run:
+        print("""\
+  Everything is working! Here's how to run:
 
-  From a YouTube URL:
-    python -m app.main --url "https://www.youtube.com/watch?v=VIDEO_ID"
+  YouTube URL:     python -m app.main --url "https://youtube.com/watch?v=..."
+  Transcript:      python -m app.main --infile inbox/file.txt --channel "Name"
+  Web UI:          python -m app.web.server     (http://localhost:8000)
 
-  From a transcript file:
-    python -m app.main --infile inbox/transcript.txt --channel "ChannelName"
-
-  With interactive review:
-    python -m app.main --url "..." --review
-
-  Web UI:
-    python -m app.web.server
-    Then open http://localhost:8000
-
-  Manage services:
-    docker compose -f docker-compose.searxng.yml logs     # SearXNG logs
-    docker compose -f docker-compose.searxng.yml restart   # Restart SearXNG
-    docker compose -f docker-compose.searxng.yml down      # Stop SearXNG
-
-  Re-validate setup:
-    python setup.py --check
+  Service management:
+    python setup.py start     Start Ollama + SearXNG
+    python setup.py stop      Stop SearXNG containers
+    python setup.py status    Check service health
+    python setup.py --check   Full validation + smoke test
 """)
     else:
         banner("SETUP INCOMPLETE")
-        print("  Some steps had issues. Fix the problems above and re-run:")
-        print("    python setup.py")
-        print()
-        print("  Or validate without changes:")
-        print("    python setup.py --check")
+        print("  Fix the issues above, then re-run: python setup.py")
+        print("  Or validate only: python setup.py --check")
         print()
         sys.exit(1)
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Entry point
+# ═══════════════════════════════════════════════════════════════════
+
+USAGE = """\
+Usage: python setup.py [command]
+
+Commands:
+  (none)     Interactive setup wizard (first-time setup)
+  --check    Validate existing setup (no changes, runs smoke test)
+  start      Start all services (Ollama + SearXNG)
+  stop       Stop SearXNG containers
+  status     Show service health
+"""
+
+def main():
+    args = [a for a in sys.argv[1:] if not a.startswith("-")]
+    flags = [a for a in sys.argv[1:] if a.startswith("-")]
+
+    cmd = args[0] if args else None
+
+    if cmd == "start":
+        cmd_start()
+    elif cmd == "stop":
+        cmd_stop()
+    elif cmd == "status":
+        cmd_status()
+    elif cmd in ("help", "-h", "--help") or "--help" in flags:
+        print(USAGE)
+    elif "--check" in flags:
+        cmd_setup(check_only=True)
+    else:
+        cmd_setup(check_only=False)
 
 
 if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        print("\n\n  Setup cancelled.")
+        print("\n\n  Cancelled.")
         sys.exit(1)
     except Exception as e:
         fail(f"Unexpected error: {e}")

@@ -1,86 +1,92 @@
 # Evident Video Fact Checker
 
-A local fact-checking pipeline for analyzing video transcripts and verifying claims using evidence-based research.
+A local fact-checking pipeline for video transcripts. Extracts claims, searches for evidence, verifies each claim with LLM reasoning, and generates a detailed report.
 
-## Features
+Everything runs locally — no cloud APIs, no data leaves your machine.
 
 - **Transcript ingestion** - Upload a file or paste a YouTube URL; auto-fetches captions or transcribes locally with Whisper
-- **Claim extraction** - Scan trascript to gather a list of claims made in the video.
+- **Claim extraction** - Scan transcript to gather a list of claims made in the video
 - **Evidence retrieval** - Search for corroborating evidence to claims gathered. 6-tier quality system prioritizes scholarly sources over forums/blogs
 - **Claim verification** - LLM reasoning with citations, confidence scoring, and rhetorical analysis
-- **Report generation** - Detailed redout of the summary of all claims researched.
+- **Report generation** - Detailed readout of the summary of all claims researched
+
+## Quick Start
+
+```bash
+# One-command setup (installs deps, detects hardware, downloads models, starts services)
+python setup.py
+
+# Fact-check a YouTube video
+python -m app.main --url "https://www.youtube.com/watch?v=VIDEO_ID"
+
+# Or start the web UI
+python -m app.web.server
+```
 
 ## Setup
 
 ### Prerequisites
 
 | Requirement | Purpose | Install |
-|-------------|---------|---------|
+|---|---|---|
 | **Python 3.11+** | Runtime | [python.org](https://www.python.org/downloads/) |
-| **Ollama** | Local LLM server (GPU recommended) | [ollama.com](https://ollama.com/) |
-| **SearXNG + Redis** | Metasearch for evidence retrieval | See Docker step below |
-| **FFmpeg** | YouTube Whisper fallback (optional) | `winget install Gyan.FFmpeg` / `apt install ffmpeg` / `brew install ffmpeg` |
+| **Ollama** | Local LLM inference | [ollama.com](https://ollama.com/download) |
+| **Docker** | Runs SearXNG search engine | [docker.com](https://www.docker.com/products/docker-desktop) |
+| FFmpeg *(optional)* | YouTube Whisper fallback | `winget install Gyan.FFmpeg` |
 
-### Install
+### Setup Wizard
 
-```bash
-# 1. Install Python dependencies
-pip install -r Requirements.txt
-
-# 2. Start Ollama (if not already running)
-ollama serve
-
-# 3. Pull recommended models
-ollama pull qwen3:8b
-ollama pull qwen3:30b
-ollama pull gemma3:27b
-
-# 4. Start SearXNG (metasearch engine)
-docker compose -f docker/docker-compose.yml up -d searxng redis
-```
-
-Or use the interactive setup wizard for guided configuration:
+The setup wizard handles everything after the prerequisites are installed:
 
 ```bash
 python setup.py
 ```
 
+It will:
+1. Install Python packages from `Requirements.txt`
+2. Verify Ollama is running and start it if needed
+3. Detect your GPU and RAM, recommend models
+4. Download Ollama models (qwen3, gemma3)
+5. Start SearXNG + Redis via Docker
+6. Generate `config.yaml` and `.env`
+7. Run a smoke test to verify everything works
+
 ### Hardware Recommendations
 
-| VRAM | RAM | Recommended Models |
-|------|-----|-------------------|
-| 24GB+ | 32GB+ | qwen3:30b, gemma3:27b |
-| 12-16GB | 32GB+ | qwen3:14b, llama3:8b |
-| 8GB | 16GB+ | qwen3:8b, llama3:8b |
-| None | 32GB+ | qwen3:8b (CPU mode) |
+| GPU VRAM | System RAM | Models |
+|---|---|---|
+| 24 GB+ | 32 GB+ | qwen3:8b, qwen3:30b, gemma3:27b |
+| 12–16 GB | 32 GB+ | qwen3:8b, qwen3:14b, gemma3:12b |
+| None (CPU) | 32 GB+ | qwen3:8b, llama3:8b |
+| None (CPU) | 16 GB | phi3:mini |
+
+---
 
 ## Web UI
-
-Start the web server and open **http://localhost:8000** in your browser:
 
 ```bash
 python -m app.web.server
 ```
 
-The web UI provides:
-- Upload transcripts via drag-and-drop or paste a YouTube URL
-- Real-time progress dashboard with per-stage progress bars
-- Live counters for claims, sources, snippets, and failures
-- Optional claim review step — edit or drop claims before verification
-- Rendered report with verdict summary badges and artifact downloads
-- Past runs history
+Open **http://localhost:8000** in your browser.
+
+- Paste a YouTube URL or upload a transcript file
+- Watch real-time progress with per-stage counters (claims, sources, snippets)
+- Optionally review and select extracted claims before verification
+- View the rendered report with verdict badges and download artifacts
+- Browse past runs with video titles, channels, and verdict summaries
 
 ## CLI
 
-### From a YouTube URL
+### YouTube URL
 
 ```bash
 python -m app.main --url "https://www.youtube.com/watch?v=VIDEO_ID"
 ```
 
-Auto-fetches captions when available, or transcribes with Whisper as fallback. Channel name is inferred from YouTube metadata.
+Auto-fetches captions when available, or transcribes locally with Whisper as fallback. Channel name is inferred from YouTube metadata.
 
-### From a transcript file
+### Transcript File
 
 ```bash
 python -m app.main --infile "inbox/transcript.txt" --channel "Channel Name"
@@ -88,41 +94,56 @@ python -m app.main --infile "inbox/transcript.txt" --channel "Channel Name"
 
 Place transcript files in `inbox/`. If `--infile` is omitted, the newest file in `inbox/` is used.
 
-### Flags
+### CLI Flags
 
-| Flag | Description | Default |
-|------|-------------|---------|
-| `--url <youtube-url>` | YouTube video URL | — |
-| `--infile <path>` | Path to transcript file | Newest in `inbox/` |
-| `--channel <name>` | Channel/creator name | Inferred from filename or YouTube metadata |
-| `--review` | Interactive claim review mode | Disabled |
-| `--verbose` | Show DEBUG output | Disabled |
-| `--quiet` | Errors/warnings only | Disabled |
+| Flag | Description |
+|---|---|
+| `--url <youtube-url>` | YouTube video URL |
+| `--infile <path>` | Path to transcript file |
+| `--channel <name>` | Channel/creator name (inferred if omitted) |
+| `--review` | Interactive claim review before verification |
+| `--verbose` | Show DEBUG output |
+| `--quiet` | Errors and warnings only |
 
 `--url` and `--infile` are mutually exclusive.
 
-## Configuration
+---
 
-### Environment Variables (.env)
+## Service Management
 
 ```bash
-# Service URLs
-EVIDENT_OLLAMA_BASE_URL=http://localhost:11434
-EVIDENT_SEARXNG_BASE_URL=http://localhost:8080
-
-# Model selections
-EVIDENT_MODEL_EXTRACT=qwen3:8b
-EVIDENT_MODEL_VERIFY=qwen3:30b
-EVIDENT_MODEL_WRITE=gemma3:27b
+python setup.py start      # Start Ollama + SearXNG
+python setup.py stop        # Stop SearXNG containers
+python setup.py status      # Check service health
+python setup.py --check     # Full validation + smoke test
 ```
+
+If you have `make` installed, these also work:
+
+```bash
+make start                  # Same as above
+make stop
+make status
+make check
+```
+
+---
+
+## Configuration
 
 ### config.yaml
 
+Primary configuration — generated by `python setup.py` or edit manually:
+
 ```yaml
 ollama:
-  model_extract: "qwen3:8b"      # Claim extraction
-  model_verify: "qwen3:30b"      # Verification
-  model_write: "gemma3:27b"      # Report writing
+  base_url: "http://localhost:11434"
+  model_extract: "qwen3:8b"
+  model_verify: "qwen3:30b"
+  model_write: "gemma3:27b"
+
+searx:
+  base_url: "http://localhost:8888"
 
 budgets:
   max_claims: 25
@@ -130,11 +151,38 @@ budgets:
   max_fetches_per_run: 80
 ```
 
+### Environment Variables (.env)
+
+Override `config.yaml` settings via environment variables:
+
+```bash
+EVIDENT_OLLAMA_BASE_URL=http://localhost:11434
+EVIDENT_SEARXNG_BASE_URL=http://localhost:8888
+EVIDENT_MODEL_EXTRACT=qwen3:8b
+EVIDENT_MODEL_VERIFY=qwen3:30b
+EVIDENT_MODEL_WRITE=gemma3:27b
+```
+
+---
+
+## Pipeline
+
+Each run executes these stages in order:
+
+1. **Prepare Transcript** — Fetch from YouTube (or accept upload) and normalize to JSON segments
+2. **Extract Claims** — LLM identifies checkable claims (with overlapping chunks) and consolidates duplicates into narrative groups
+3. **Review Claims** *(optional)* — Select which claims to verify
+4. **Gather Evidence** — LLM-generated search queries, SearXNG search, URL fetch, snippet extraction
+5. **Check Claims** — LLM evaluates each claim against evidence (parallel verification)
+6. **Fact-Check Summary** — Aggregate verdicts, generate report with narrative group analysis
+
+Token usage (prompt and completion tokens) is tracked per-stage and stored in `run.json`.
+
 ### Verdict Ratings
 
 | Rating | Meaning |
-|--------|---------|
-| TRUE | Confirmed by strong evidence |
+|---|---|
+| VERIFIED | Confirmed by strong evidence |
 | LIKELY TRUE | Supported but not fully confirmed |
 | INSUFFICIENT EVIDENCE | Not enough quality sources found |
 | CONFLICTING EVIDENCE | Credible sources disagree |
@@ -143,14 +191,14 @@ budgets:
 
 ### Source Quality Tiers
 
-| Tier | Description | Examples |
-|------|-------------|----------|
-| 1 | Top scholarly journals | Nature, Science, NEJM |
-| 2 | Academic institutions | .edu, .ac.uk |
-| 3 | Government/International orgs | .gov, WHO, UN |
-| 4 | Research organizations | Pew Research, Brookings |
-| 5 | Established news agencies | Reuters, AP, BBC |
-| 6 | Everything else | - |
+| Tier | Examples |
+|---|---|
+| 1 — Scholarly | Nature, Science, NEJM, Lancet |
+| 2 — Academic | .edu, .ac.uk institutions |
+| 3 — Government | .gov, WHO, UN, CDC |
+| 4 — Research orgs | Pew, Brookings, RAND |
+| 5 — Major news | Reuters, AP, BBC, NYT |
+| 6 — Other | Everything else |
 
 ## Output
 
@@ -158,77 +206,38 @@ Each run creates a timestamped directory:
 
 ```
 runs/YYYYMMDD_HHMMSS__channel__video_title/
-├── 00_transcript.raw.txt           # Original input
-├── 01_transcript.json              # Normalized segments
-├── 02_claims.json                  # Extracted claims
-├── 03_sources.json                 # Retrieved evidence
-├── 04_snippets.json                # Evidence snippets
-├── 05_verdicts.json                # Verification results
-├── 06_scorecard.md                 # Verdict counts and source tiers
-├── 07_summary.md                   # Fact-check report
-├── run.json                        # Run metadata
-└── run.log                         # Execution log
+├── 00_transcript.raw.txt     Original input
+├── 01_transcript.json        Normalized segments
+├── 02_claims.json            Extracted claims
+├── 03_sources.json           Retrieved evidence
+├── 04_snippets.json          Evidence snippets
+├── 05_verdicts.json          Verification results
+├── 06_scorecard.md           Verdict counts and source tiers
+├── 07_summary.md             Full fact-check report
+├── run.json                  Run metadata (config, counts, token usage, timings)
+└── run.log                   Execution log
 ```
 
 ## Project Structure
 
 ```
 evident-video-fact-checker/
-├── app/                    # Application code
-│   ├── main.py             # CLI entry point
-│   ├── pipeline/           # Processing stages
-│   ├── schemas/            # Pydantic models
-│   ├── store/              # Store modules
-│   ├── tools/              # Utilities (fetch, parse, ollama, youtube)
-│   └── web/                # Web UI (FastAPI + HTMX)
-│       ├── server.py       # Routes and SSE endpoint
-│       ├── runner.py       # Background pipeline runner
-│       ├── templates/      # Jinja2 HTML templates
-│       └── static/         # Vendored CSS/JS (Pico.css, HTMX)
-├── docker/                 # Docker configuration
-│   ├── docker-compose.yml
-│   ├── docker-compose.gpu.yml      # NVIDIA GPU override
-│   ├── docker-compose.amd.yml      # AMD ROCm override
-│   └── Dockerfile
-├── inbox/                  # Input transcripts
-├── runs/                   # Output directories (timestamped)
-├── cache/                  # URL cache (gitignored)
-├── store/                  # Persistent storage (gitignored)
-├── searxng/                # SearXNG configuration
-├── config.yaml             # Application config
-├── .env                    # Environment variables
-├── setup.py                # Interactive setup wizard
-└── Makefile                # Make commands
-```
-
-## Docker
-
-For a fully containerized setup, see [DOCKER.md](DOCKER.md).
-
-```bash
-# Start all services
-docker compose -f docker/docker-compose.yml up -d
-
-# Run pipeline in Docker
-docker compose -f docker/docker-compose.yml run --rm app python -m app.main --infile inbox/transcript.txt
-```
-
-## Make Commands
-
-```bash
-make help              # Show all commands
-make setup             # Run setup wizard
-make web               # Start web UI at http://localhost:8000
-make runvid ARGS='...' # Run natively (recommended)
-make start             # Start Docker services
-make stop              # Stop Docker services
-make status            # Show service status
-make logs              # Tail all logs
-make models            # List Ollama models
+├── app/
+│   ├── main.py               CLI entry point
+│   ├── pipeline/              Processing stages
+│   ├── schemas/               Pydantic models (Claim, Verdict, ClaimGroup)
+│   ├── store/                 Persistent storage modules
+│   ├── tools/                 Utilities (ollama, searx, fetch, youtube)
+│   └── web/                   Web UI (FastAPI + HTMX + Jinja2)
+├── setup.py                   Setup wizard + service management
+├── docker-compose.searxng.yml SearXNG + Redis (Docker)
+├── config.yaml                Application config
+├── Requirements.txt           Python dependencies
+└── Makefile                   Make shortcuts
 ```
 
 ## Documentation
 
-- [DOCKER.md](DOCKER.md) - Detailed Docker setup guide
-- [MIGRATION.md](MIGRATION.md) - Migration from legacy setup
-- [CLAUDE.md](CLAUDE.md) - Project context for AI assistants
+- [DOCKER.md](DOCKER.md) — Full Docker deployment (advanced)
+- [MIGRATION.md](MIGRATION.md) — Migration from legacy setup
+- [CLAUDE.md](CLAUDE.md) — Project context for AI assistants
