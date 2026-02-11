@@ -1,0 +1,50 @@
+# Minimal SearXNG + Redis stack for native Evident setup
+# Used by setup.py — no Ollama or app containers needed
+# Start: docker compose -f docker-compose.searxng.yml up -d
+# Stop:  docker compose -f docker-compose.searxng.yml down
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: evident-redis
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - evident-net
+
+  searxng:
+    image: searxng/searxng:latest
+    container_name: evident-searxng
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./searxng:/etc/searxng:rw
+    environment:
+      - SEARXNG_BASE_URL=http://localhost:8080
+      - BIND_ADDRESS=0.0.0.0:8080
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/search?q=test&format=json"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - evident-net
+
+volumes:
+  redis-data:
+
+networks:
+  evident-net:
+    driver: bridge

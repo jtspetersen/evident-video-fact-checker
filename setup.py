@@ -1,1078 +1,655 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
-Evident Video Fact Checker - Interactive Setup Wizard
+Evident Video Fact Checker — Setup Wizard
 
-Detects system hardware, recommends models, configures Docker services,
-and downloads models for a complete one-command setup experience.
+Takes a fresh install from zero to a working pipeline run.
+Native-first: local Python + local Ollama + SearXNG via Docker.
+
+Each step follows check → act → verify: detects what's already done,
+does only what's needed, and confirms it worked. Safe to re-run.
+
+Usage:
+    python setup.py            # Interactive setup
+    python setup.py --check    # Validate existing setup (no changes)
 """
 
 import os
 import sys
-
-# Set UTF-8 encoding for Windows console
-if sys.platform == "win32":
-    import io
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 import json
+import time
+import secrets
+import platform
 import subprocess
 import shutil
-import secrets
+import urllib.request
+import urllib.error
 from pathlib import Path
-from typing import Optional, Dict, Tuple
+from typing import Optional, Tuple
 
-try:
-    import psutil
-except ImportError:
-    print("ERROR: psutil not installed. Run: pip install psutil")
-    sys.exit(1)
+# Fix Windows console encoding for Unicode markers
+if sys.platform == "win32":
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
 
-# ----------------------------
-# Configuration
-# ----------------------------
+# ── Project root (setup.py lives here) ──────────────────────────────
+PROJECT_ROOT = Path(__file__).resolve().parent
+COMPOSE_FILE = PROJECT_ROOT / "docker-compose.searxng.yml"
+CONFIG_FILE = PROJECT_ROOT / "config.yaml"
+ENV_FILE = PROJECT_ROOT / ".env"
+REQUIREMENTS_FILE = PROJECT_ROOT / "Requirements.txt"
+SEARXNG_DIR = PROJECT_ROOT / "searxng"
 
-MODEL_RECOMMENDATION_MATRIX = [
-    # (min_vram_gb, min_ram_gb, profile_name, extract, verify, write)
-    (24, 32, "High-end GPU (24GB+ VRAM)", "qwen3:8b", "qwen3:30b", "gemma3:27b"),
-    (16, 32, "Mid-range GPU (16GB VRAM)", "qwen3:8b", "qwen3:14b", "gemma3:12b"),
-    (12, 32, "Entry GPU (12GB VRAM)", "qwen3:8b", "qwen3:8b", "gemma3:9b"),
-    (0, 64, "High-end CPU (64GB+ RAM)", "qwen3:8b", "qwen3:14b", "gemma3:9b"),
-    (0, 32, "Mid-range CPU (32GB+ RAM)", "qwen3:8b", "qwen3:8b", "llama3:8b"),
-    (0, 16, "Minimum (16GB RAM)", "phi3:mini", "phi3:mini", "phi3:mini"),
+OLLAMA_URL = "http://localhost:11434"
+SEARXNG_URL = "http://localhost:8080"
+
+MODEL_TIERS = [
+    # (min_vram, min_ram, label, extract, verify, write)
+    (24, 32, "High-end GPU (24 GB+ VRAM)", "qwen3:8b", "qwen3:30b", "gemma3:27b"),
+    (16, 32, "Mid-range GPU (16 GB VRAM)", "qwen3:8b", "qwen3:14b", "gemma3:12b"),
+    (12, 32, "Entry GPU (12 GB VRAM)",     "qwen3:8b", "qwen3:8b",  "gemma3:9b"),
+    (0,  64, "High-end CPU (64 GB+ RAM)",  "qwen3:8b", "qwen3:14b", "gemma3:9b"),
+    (0,  32, "Mid-range CPU (32 GB+ RAM)", "qwen3:8b", "qwen3:8b",  "llama3:8b"),
+    (0,  16, "Minimum (16 GB RAM)",        "phi3:mini","phi3:mini",  "phi3:mini"),
 ]
 
+# AMD VRAM lookup for Windows WMI (32-bit AdapterRAM cap)
+AMD_VRAM_TABLE = {
+    "7900 XTX": 24.0, "7900 XT": 20.0, "7800 XT": 16.0,
+    "7700 XT": 12.0,  "7600": 8.0,     "6950 XT": 16.0,
+    "6900 XT": 16.0,  "6800 XT": 16.0, "6800": 16.0,
+    "6750 XT": 12.0,  "6700 XT": 12.0,
+}
 
-# ----------------------------
+
+# ═══════════════════════════════════════════════════════════════════
 # Utilities
-# ----------------------------
+# ═══════════════════════════════════════════════════════════════════
 
-def print_header(text: str) -> None:
-    """Print a section header."""
-    print("\n" + "=" * 70)
-    print(f"  {text}")
-    print("=" * 70 + "\n")
-
-
-def print_step(text: str) -> None:
-    """Print a step message."""
-    print(f"→ {text}")
+def ok(msg: str)   -> None: print(f"  [OK]   {msg}")
+def fail(msg: str) -> None: print(f"  [FAIL] {msg}", file=sys.stderr)
+def warn(msg: str) -> None: print(f"  [WARN] {msg}")
+def info(msg: str) -> None: print(f"  ...    {msg}")
+def banner(title: str) -> None:
+    print(f"\n{'=' * 64}")
+    print(f"  {title}")
+    print(f"{'=' * 64}\n")
 
 
-def print_success(text: str) -> None:
-    """Print a success message."""
-    print(f"✓ {text}")
-
-
-def print_error(text: str) -> None:
-    """Print an error message."""
-    print(f"✗ ERROR: {text}", file=sys.stderr)
-
-
-def print_warning(text: str) -> None:
-    """Print a warning message."""
-    print(f"⚠ WARNING: {text}")
-
-
-def run_command(cmd: list, check: bool = True, capture: bool = False) -> Optional[str]:
-    """
-    Run a shell command.
-    Returns stdout if capture=True, otherwise None.
-    """
-    try:
-        if capture:
-            result = subprocess.run(cmd, check=check, capture_output=True, text=True)
-            return result.stdout.strip()
-        else:
-            subprocess.run(cmd, check=check)
-            return None
-    except subprocess.CalledProcessError as e:
-        if check:
-            raise
-        return None
-    except FileNotFoundError:
-        if check:
-            raise
-        return None
-
-
-def prompt_yes_no(question: str, default: bool = True) -> bool:
-    """Prompt user for yes/no answer."""
-    default_str = "Y/n" if default else "y/N"
+def ask(question: str, default: bool = True) -> bool:
+    hint = "Y/n" if default else "y/N"
     while True:
-        answer = input(f"{question} [{default_str}] ").strip().lower()
+        answer = input(f"  {question} [{hint}] ").strip().lower()
         if not answer:
             return default
         if answer in ("y", "yes"):
             return True
         if answer in ("n", "no"):
             return False
-        print("Please answer 'y' or 'n'.")
 
 
-# ----------------------------
-# Phase 1: Prerequisites Check
-# ----------------------------
+def run(cmd: list, capture: bool = False, check: bool = True,
+        timeout: int = 120) -> Optional[str]:
+    try:
+        r = subprocess.run(
+            cmd, capture_output=capture, text=True,
+            check=check, timeout=timeout
+        )
+        return r.stdout.strip() if capture else None
+    except (subprocess.CalledProcessError, FileNotFoundError,
+            subprocess.TimeoutExpired):
+        if check:
+            raise
+        return None
 
-def _install_ffmpeg() -> bool:
-    """Attempt to install FFmpeg automatically. Returns True if installed."""
-    import platform
+
+def http_get(url: str, timeout: int = 10) -> Optional[str]:
+    try:
+        req = urllib.request.Request(url)
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return resp.read().decode("utf-8", errors="replace")
+    except Exception:
+        return None
+
+
+def http_post_json(url: str, data: dict, timeout: int = 60) -> Optional[str]:
+    try:
+        payload = json.dumps(data).encode("utf-8")
+        req = urllib.request.Request(
+            url, data=payload,
+            headers={"Content-Type": "application/json"}
+        )
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return resp.read().decode("utf-8", errors="replace")
+    except Exception:
+        return None
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Step 1: Python & pip dependencies
+# ═══════════════════════════════════════════════════════════════════
+
+def step_python_deps(check_only: bool = False) -> bool:
+    banner("Step 1 / 8 : Python & Dependencies")
+
+    # Python version
+    v = sys.version_info
+    if v >= (3, 11):
+        ok(f"Python {v.major}.{v.minor}.{v.micro}")
+    else:
+        fail(f"Python 3.11+ required (found {v.major}.{v.minor})")
+        return False
+
+    # Quick import check for key packages
+    missing = []
+    for pkg, module in [
+        ("pydantic", "pydantic"), ("requests", "requests"),
+        ("fastapi", "fastapi"), ("tqdm", "tqdm"),
+        ("PyYAML", "yaml"), ("beautifulsoup4", "bs4"),
+        ("python-dotenv", "dotenv"), ("psutil", "psutil"),
+        ("jinja2", "jinja2"), ("uvicorn", "uvicorn"),
+    ]:
+        try:
+            __import__(module)
+        except ImportError:
+            missing.append(pkg)
+
+    if not missing:
+        ok("All Python packages installed")
+        return True
+
+    warn(f"Missing packages: {', '.join(missing)}")
+
+    if check_only:
+        fail("Run: pip install -r Requirements.txt")
+        return False
+
+    if not REQUIREMENTS_FILE.exists():
+        fail(f"{REQUIREMENTS_FILE} not found")
+        return False
+
+    info("Installing packages...")
+    try:
+        subprocess.run(
+            [sys.executable, "-m", "pip", "install", "-r", str(REQUIREMENTS_FILE)],
+            check=True, timeout=300
+        )
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
+        fail(f"pip install failed: {e}")
+        return False
+
+    # Verify
+    still_missing = []
+    for pkg, module in [("pydantic", "pydantic"), ("requests", "requests"),
+                        ("fastapi", "fastapi"), ("tqdm", "tqdm"),
+                        ("PyYAML", "yaml"), ("psutil", "psutil")]:
+        try:
+            __import__(module)
+        except ImportError:
+            still_missing.append(pkg)
+
+    if still_missing:
+        fail(f"Still missing after install: {', '.join(still_missing)}")
+        return False
+
+    ok("All packages installed")
+    return True
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Step 2: Ollama
+# ═══════════════════════════════════════════════════════════════════
+
+def step_ollama(check_only: bool = False) -> bool:
+    banner("Step 2 / 8 : Ollama LLM Service")
+
+    # Check CLI
+    cli_ok = False
+    try:
+        ver = run(["ollama", "--version"], capture=True, check=False)
+        if ver:
+            ok(f"Ollama CLI: {ver}")
+            cli_ok = True
+    except Exception:
+        pass
+
+    if not cli_ok:
+        fail("Ollama CLI not found in PATH")
+        print()
+        system = platform.system()
+        if system == "Windows":
+            print("  Install Ollama:")
+            print("    winget install Ollama.Ollama")
+            print("    -- or download from https://ollama.com/download")
+        elif system == "Darwin":
+            print("  Install Ollama:")
+            print("    brew install ollama")
+            print("    -- or download from https://ollama.com/download")
+        else:
+            print("  Install Ollama:")
+            print("    curl -fsSL https://ollama.com/install.sh | sh")
+        print()
+        return False
+
+    # Check service
+    resp = http_get(f"{OLLAMA_URL}/api/tags")
+    if resp:
+        ok(f"Ollama service running at {OLLAMA_URL}")
+        return True
+
+    warn("Ollama installed but service not responding")
+
+    if check_only:
+        fail("Start Ollama and re-run")
+        return False
+
+    # Try to start it
+    info("Attempting to start Ollama...")
     system = platform.system()
-
     if system == "Windows":
-        # Try winget (Windows Package Manager)
-        print_step("Attempting to install FFmpeg via winget...")
+        # On Windows, 'ollama serve' blocks — try starting via the app
         try:
-            result = subprocess.run(
-                ["winget", "install", "--id", "Gyan.FFmpeg",
-                 "--accept-source-agreements", "--accept-package-agreements"],
-                capture_output=False, text=True, timeout=300,
+            subprocess.Popen(
+                ["ollama", "serve"],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP
+                | subprocess.DETACHED_PROCESS
             )
-            if result.returncode == 0:
-                print_success("FFmpeg installed via winget")
-                print_warning("Restart your terminal for PATH to take effect")
-                return True
-        except (FileNotFoundError, subprocess.TimeoutExpired):
-            pass
-
-        print_warning("winget not available. Install FFmpeg manually:")
-        print_warning("  winget install Gyan.FFmpeg")
-        print_warning("  -- or download from https://ffmpeg.org/download.html")
-        return False
-
-    elif system == "Linux":
-        # Try apt (Debian/Ubuntu)
-        print_step("Attempting to install FFmpeg via apt...")
+            info("Started 'ollama serve' in background")
+        except Exception:
+            warn("Could not auto-start Ollama")
+            print("  Start Ollama manually (system tray icon or 'ollama serve')")
+            return False
+    else:
         try:
-            subprocess.run(["sudo", "apt-get", "install", "-y", "ffmpeg"],
-                           check=True, timeout=120)
-            print_success("FFmpeg installed via apt")
-            return True
-        except (FileNotFoundError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
-            pass
-        return False
+            subprocess.Popen(
+                ["ollama", "serve"],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                start_new_session=True
+            )
+            info("Started 'ollama serve' in background")
+        except Exception:
+            warn("Could not auto-start Ollama")
+            print("  Start Ollama manually: ollama serve &")
+            return False
 
-    elif system == "Darwin":
-        # Try brew (macOS)
-        print_step("Attempting to install FFmpeg via brew...")
-        try:
-            subprocess.run(["brew", "install", "ffmpeg"], check=True, timeout=300)
-            print_success("FFmpeg installed via brew")
+    # Wait for it
+    for i in range(12):
+        time.sleep(5)
+        resp = http_get(f"{OLLAMA_URL}/api/tags")
+        if resp:
+            ok(f"Ollama service ready at {OLLAMA_URL}")
             return True
-        except (FileNotFoundError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
-            pass
-        return False
+        info(f"Waiting for Ollama... ({(i+1)*5}s)")
 
+    fail("Ollama did not start within 60s")
+    print("  Start Ollama manually and re-run setup")
     return False
 
 
-def check_prerequisites() -> Dict[str, bool]:
-    """Check if required tools are installed."""
-    print_header("Phase 1: Prerequisites Check")
+# ═══════════════════════════════════════════════════════════════════
+# Step 3: Docker (for SearXNG) + FFmpeg
+# ═══════════════════════════════════════════════════════════════════
 
-    results = {}
+def _check_ffmpeg() -> bool:
+    """Check for FFmpeg, attempt install if missing."""
+    try:
+        ver = run(["ffmpeg", "-version"], capture=True, check=False)
+        if ver:
+            ok(f"FFmpeg: {ver.split(chr(10))[0]}")
+            return True
+    except Exception:
+        pass
+
+    warn("FFmpeg not found (needed only for YouTube Whisper fallback)")
+
+    system = platform.system()
+    if system == "Windows":
+        info("Attempting install via winget...")
+        try:
+            r = subprocess.run(
+                ["winget", "install", "--id", "Gyan.FFmpeg",
+                 "--accept-source-agreements", "--accept-package-agreements"],
+                timeout=300, capture_output=False, text=True
+            )
+            if r.returncode == 0:
+                ok("FFmpeg installed (restart terminal for PATH)")
+                return True
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            pass
+        warn("Install FFmpeg manually: winget install Gyan.FFmpeg")
+    elif system == "Linux":
+        info("Attempting install via apt...")
+        try:
+            subprocess.run(["sudo", "apt-get", "install", "-y", "ffmpeg"],
+                           check=True, timeout=120)
+            ok("FFmpeg installed")
+            return True
+        except Exception:
+            pass
+        warn("Install FFmpeg manually: sudo apt install ffmpeg")
+    elif system == "Darwin":
+        info("Attempting install via brew...")
+        try:
+            subprocess.run(["brew", "install", "ffmpeg"], check=True, timeout=300)
+            ok("FFmpeg installed")
+            return True
+        except Exception:
+            pass
+        warn("Install FFmpeg manually: brew install ffmpeg")
+
+    warn("Caption-based YouTube transcripts still work without FFmpeg")
+    return False
+
+
+def step_docker_and_ffmpeg(check_only: bool = False) -> bool:
+    banner("Step 3 / 8 : Docker & FFmpeg")
 
     # Docker
-    print_step("Checking Docker...")
+    docker_ok = False
     try:
-        version = run_command(["docker", "--version"], capture=True)
-        print_success(f"Docker installed: {version}")
-        results["docker"] = True
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        print_error("Docker not installed or not in PATH")
-        results["docker"] = False
+        ver = run(["docker", "--version"], capture=True, check=False)
+        if ver:
+            ok(f"Docker: {ver}")
+            docker_ok = True
+    except Exception:
+        pass
+
+    if not docker_ok:
+        fail("Docker not installed (needed to run SearXNG search engine)")
+        system = platform.system()
+        if system == "Windows":
+            print("  Install Docker Desktop: https://www.docker.com/products/docker-desktop")
+        elif system == "Darwin":
+            print("  Install Docker Desktop: brew install --cask docker")
+        else:
+            print("  Install Docker: https://docs.docker.com/engine/install/")
+        print()
+        return False
 
     # Docker Compose
-    print_step("Checking Docker Compose...")
     try:
-        version = run_command(["docker", "compose", "version"], capture=True)
-        print_success(f"Docker Compose installed: {version}")
-        results["docker_compose"] = True
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        print_error("Docker Compose v2 not installed")
-        results["docker_compose"] = False
-
-    # Python
-    print_step("Checking Python version...")
-    if sys.version_info >= (3, 11):
-        print_success(f"Python {sys.version_info.major}.{sys.version_info.minor} OK")
-        results["python"] = True
-    else:
-        print_error(f"Python 3.11+ required, found {sys.version_info.major}.{sys.version_info.minor}")
-        results["python"] = False
-
-    # FFmpeg (required for YouTube transcript Whisper fallback)
-    print_step("Checking FFmpeg...")
-    try:
-        version = run_command(["ffmpeg", "-version"], capture=True)
-        version_line = version.split('\n')[0] if version else "unknown"
-        print_success(f"FFmpeg installed: {version_line}")
-        results["ffmpeg"] = True
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        print_warning("FFmpeg not found (needed for YouTube Whisper fallback)")
-        if _install_ffmpeg():
-            results["ffmpeg"] = True
+        ver = run(["docker", "compose", "version"], capture=True, check=False)
+        if ver:
+            ok(f"Docker Compose: {ver}")
         else:
-            print_warning("FFmpeg not installed. YouTube Whisper fallback will not work.")
-            print_warning("Caption-based transcripts will still work without it.")
-            results["ffmpeg"] = False
-
-    return results
-
-
-# ----------------------------
-# Phase 2: Hardware Detection
-# ----------------------------
-
-def detect_nvidia_gpu() -> Tuple[bool, Optional[str], Optional[float]]:
-    """
-    Detect NVIDIA GPU and VRAM.
-    Returns: (has_gpu, gpu_name, vram_gb)
-    """
-    print_step("Detecting NVIDIA GPU...")
-    try:
-        output = run_command(
-            ["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader,nounits"],
-            capture=True,
-            check=False
-        )
-        if output:
-            parts = output.split(",")
-            gpu_name = parts[0].strip()
-            vram_mb = float(parts[1].strip())
-            vram_gb = vram_mb / 1024
-            print_success(f"NVIDIA GPU detected: {gpu_name} ({vram_gb:.1f} GB VRAM)")
-            return True, gpu_name, vram_gb
+            fail("Docker Compose v2 not available (need 'docker compose' subcommand)")
+            return False
     except Exception:
-        print_step("No NVIDIA GPU detected (nvidia-smi not available)")
+        fail("Docker Compose v2 not available")
+        return False
 
-    return False, None, None
-
-
-def detect_amd_gpu_windows() -> Tuple[bool, Optional[str], Optional[float]]:
-    """
-    Detect AMD GPU on Windows using PowerShell/wmic.
-    Returns: (has_gpu, gpu_name, vram_gb)
-    """
+    # Docker daemon running?
     try:
-        import platform
-        if platform.system() != "Windows":
-            return False, None, None
+        run(["docker", "info"], capture=True, check=True, timeout=15)
+        ok("Docker daemon running")
+    except Exception:
+        fail("Docker daemon not running — start Docker Desktop and re-run")
+        return False
 
-        # Query GPU info using PowerShell (more reliable in Git Bash)
-        output = run_command(
+    # FFmpeg (optional — don't fail on this)
+    _check_ffmpeg()
+
+    return True
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Step 4: Hardware detection
+# ═══════════════════════════════════════════════════════════════════
+
+def _detect_nvidia() -> Tuple[bool, Optional[str], float]:
+    try:
+        out = run(
+            ["nvidia-smi", "--query-gpu=name,memory.total",
+             "--format=csv,noheader,nounits"],
+            capture=True, check=False
+        )
+        if out:
+            parts = out.split(",")
+            name = parts[0].strip()
+            vram = float(parts[1].strip()) / 1024
+            return True, name, vram
+    except Exception:
+        pass
+    return False, None, 0.0
+
+
+def _detect_amd_windows() -> Tuple[bool, Optional[str], float]:
+    if platform.system() != "Windows":
+        return False, None, 0.0
+    try:
+        out = run(
             ["powershell", "-Command",
-             "Get-WmiObject Win32_VideoController | Select-Object Name,AdapterRAM | Format-List"],
-            capture=True,
-            check=False
+             "Get-WmiObject Win32_VideoController | "
+             "Select-Object Name,AdapterRAM | Format-List"],
+            capture=True, check=False
         )
+        if not out:
+            return False, None, 0.0
 
-        if output:
-            # Parse PowerShell Format-List output
-            gpu_name = None
-            vram_bytes = None
-
-            for line in output.split('\n'):
-                line = line.strip()
-                if line.startswith("Name") and ("Radeon" in line or "AMD" in line):
-                    # Extract GPU name after the colon
-                    gpu_name = line.split(":", 1)[1].strip() if ":" in line else None
-                elif line.startswith("AdapterRAM") and gpu_name:
-                    # Extract VRAM bytes after the colon
-                    try:
-                        vram_str = line.split(":", 1)[1].strip() if ":" in line else ""
-                        vram_bytes = int(vram_str) if vram_str else None
-                    except ValueError:
-                        pass
-
-                    # If we have both name and VRAM for an AMD GPU, process it
-                    if gpu_name and (vram_bytes or True):  # Accept even if VRAM not detected
-                        # Convert VRAM from bytes to GB
-                        vram_gb = None
-                        if vram_bytes and vram_bytes > 0:
-                            vram_gb = vram_bytes / (1024 ** 3)
-
-                        # WMI AdapterRAM is 32-bit, can only report up to ~4GB
-                        # Use lookup table for known high-VRAM GPUs
-                        # Override if detected VRAM seems too low for the model
-                        known_vram = None
-                        if "7900 XTX" in gpu_name or "7900XTX" in gpu_name.replace(" ", ""):
-                            known_vram = 24.0
-                        elif "7900 XT" in gpu_name and "XTX" not in gpu_name:
-                            known_vram = 20.0
-                        elif "7800 XT" in gpu_name:
-                            known_vram = 16.0
-                        elif "7700 XT" in gpu_name:
-                            known_vram = 12.0
-                        elif "7600" in gpu_name:
-                            known_vram = 8.0
-                        elif "6950 XT" in gpu_name:
-                            known_vram = 16.0
-                        elif "6900 XT" in gpu_name:
-                            known_vram = 16.0
-                        elif "6800 XT" in gpu_name:
-                            known_vram = 16.0
-                        elif "6800" in gpu_name and "XT" not in gpu_name:
-                            known_vram = 16.0
-                        elif "6750 XT" in gpu_name:
-                            known_vram = 12.0
-                        elif "6700 XT" in gpu_name:
-                            known_vram = 12.0
-
-                        # Use known VRAM if detected is missing or suspiciously low
-                        if known_vram and (not vram_gb or vram_gb < known_vram * 0.5):
-                            vram_gb = known_vram
-
-                        return True, gpu_name, vram_gb or 0.0
-    except Exception:
-        pass
-
-    return False, None, None
-
-
-def check_ollama_using_gpu() -> Tuple[bool, Optional[str]]:
-    """
-    Check if native Ollama is running and using GPU.
-    Returns: (using_gpu, processor_info)
-    """
-    try:
-        import urllib.request
-        import json
-
-        # Check if Ollama is running
-        try:
-            req = urllib.request.Request("http://localhost:11434/api/tags")
-            with urllib.request.urlopen(req, timeout=5) as resp:
-                data = json.loads(resp.read())
-                models = data.get("models", [])
-        except Exception:
-            return False, None
-
-        if not models:
-            return False, None
-
-        # Try to load a model and check if GPU is used
-        # First check if any model is already loaded
-        output = run_command(["ollama", "ps"], capture=True, check=False)
-        if output and "GPU" in output:
-            # Model already loaded with GPU
-            return True, "GPU"
-
-        # Try loading the smallest available model
-        smallest_model = min(models, key=lambda m: m.get("size", float("inf")))
-        model_name = smallest_model.get("name")
-        if not model_name:
-            return False, None
-
-        # Quick inference to load model
-        try:
-            payload = json.dumps({
-                "model": model_name,
-                "prompt": "hi",
-                "stream": False,
-                "options": {"num_predict": 1}
-            }).encode()
-            req = urllib.request.Request(
-                "http://localhost:11434/api/generate",
-                data=payload,
-                headers={"Content-Type": "application/json"}
-            )
-            with urllib.request.urlopen(req, timeout=60) as resp:
-                pass  # Just need to trigger model load
-        except Exception:
-            pass
-
-        # Now check processor
-        output = run_command(["ollama", "ps"], capture=True, check=False)
-        if output:
-            for line in output.split('\n'):
-                if "GPU" in line:
-                    # Extract processor info (e.g., "100% GPU" or "50% GPU/50% CPU")
-                    parts = line.split()
-                    for i, part in enumerate(parts):
-                        if "GPU" in part or (i > 0 and "GPU" in parts[i-1] if i > 0 else False):
-                            # Find the percentage
-                            for p in parts:
-                                if "%" in p and "GPU" in line:
-                                    return True, line
-                    return True, "GPU"
-
-        return False, None
-    except Exception:
-        return False, None
-
-
-def detect_amd_gpu() -> Tuple[bool, Optional[str], Optional[float]]:
-    """
-    Detect AMD GPU with ROCm and VRAM.
-    Returns: (has_gpu, gpu_name, vram_gb)
-    """
-    print_step("Detecting AMD GPU with ROCm...")
-
-    # Try rocm-smi first (Linux/Windows with ROCm)
-    try:
-        output = run_command(
-            ["rocm-smi", "--showproductname"],
-            capture=True,
-            check=False
-        )
-        if output and "GPU" in output:
-            gpu_name = None
-            for line in output.split('\n'):
-                if "Card series:" in line or "Card model:" in line:
-                    gpu_name = line.split(":")[-1].strip()
-                    break
-
-            if not gpu_name:
-                # Try to extract from general output
-                for line in output.split('\n'):
-                    if "Radeon" in line or "AMD" in line:
-                        gpu_name = line.strip()
+        gpu_name = None
+        for line in out.split("\n"):
+            line = line.strip()
+            if line.startswith("Name") and ("Radeon" in line or "AMD" in line):
+                gpu_name = line.split(":", 1)[1].strip() if ":" in line else None
+            elif line.startswith("AdapterRAM") and gpu_name:
+                # WMI AdapterRAM is 32-bit capped — use lookup table
+                vram = 0.0
+                for pattern, known_vram in AMD_VRAM_TABLE.items():
+                    if pattern in gpu_name:
+                        vram = known_vram
                         break
-
-            # Try to get VRAM info
-            vram_gb = None
-            try:
-                vram_output = run_command(
-                    ["rocm-smi", "--showmeminfo", "vram"],
-                    capture=True,
-                    check=False
-                )
-                if vram_output:
-                    # Parse VRAM size from output
-                    for line in vram_output.split('\n'):
-                        if "Total" in line or "VRAM Total" in line:
-                            # Extract number (usually in MB or GB)
-                            import re
-                            match = re.search(r'(\d+(?:\.\d+)?)\s*(MB|GB|MiB|GiB)', line, re.IGNORECASE)
-                            if match:
-                                size = float(match.group(1))
-                                unit = match.group(2).upper()
-                                if 'MB' in unit or 'MIB' in unit:
-                                    vram_gb = size / 1024
-                                else:
-                                    vram_gb = size
-                                break
-            except Exception:
-                pass
-
-            # Default VRAM estimate for known cards if detection fails
-            if not vram_gb and gpu_name:
-                if "7900 XTX" in gpu_name or "7900XTX" in gpu_name.replace(" ", ""):
-                    vram_gb = 24.0
-                elif "7900 XT" in gpu_name:
-                    vram_gb = 20.0
-                elif "7800 XT" in gpu_name:
-                    vram_gb = 16.0
-
-            if gpu_name:
-                vram_str = f" ({vram_gb:.1f} GB VRAM)" if vram_gb else ""
-                print_success(f"AMD GPU detected: {gpu_name}{vram_str}")
-                return True, gpu_name, vram_gb or 0.0
-    except Exception:
-        pass
-
-    # Fallback: Check for ROCm installation on Windows
-    try:
-        import platform
-        if platform.system() == "Windows":
-            # Check if HIP/ROCm is installed
-            hip_path = os.environ.get("HIP_PATH") or os.environ.get("ROCM_PATH")
-            if hip_path and os.path.exists(hip_path):
-                print_success("ROCm installation detected. Assuming AMD GPU present.")
-                print_warning("Could not auto-detect GPU model. Please verify manually.")
-                # Prompt user for GPU info
-                if prompt_yes_no("Do you have an AMD Radeon RX 7900 XTX (24GB)?", default=True):
-                    return True, "AMD Radeon RX 7900 XTX", 24.0
-                else:
-                    gpu_name = input("Enter your AMD GPU model (e.g., 'Radeon RX 7800 XT'): ").strip()
-                    vram_input = input("Enter VRAM in GB (e.g., '16'): ").strip()
+                if vram == 0.0:
+                    # Try parsing reported value
                     try:
-                        vram_gb = float(vram_input)
-                        return True, gpu_name, vram_gb
-                    except ValueError:
-                        return True, gpu_name, 0.0
+                        raw = line.split(":", 1)[1].strip()
+                        vram = int(raw) / (1024 ** 3) if raw else 0.0
+                    except (ValueError, IndexError):
+                        pass
+                return True, gpu_name, vram
     except Exception:
         pass
-
-    print_step("No AMD GPU detected (rocm-smi not available)")
-    return False, None, None
+    return False, None, 0.0
 
 
-def check_wsl2_installed() -> bool:
-    """Check if WSL2 is installed on Windows."""
+def _detect_amd_rocm() -> Tuple[bool, Optional[str], float]:
     try:
-        import platform
-        if platform.system() != "Windows":
-            return False
-
-        output = run_command(["wsl", "--list", "--verbose"], capture=True, check=False)
-        if output:
-            # Windows WSL output sometimes has null bytes (appears as spaces between chars)
-            # Normalize by removing null bytes and extra spaces
-            normalized = output.replace('\x00', '').replace('  ', ' ')
-            # Also try removing ALL spaces for pattern matching
-            no_spaces = output.replace(' ', '').replace('\x00', '')
-
-            # Check for VERSION header (handles both normal and spaced output)
-            if "VERSION" in normalized or "VERSION" in no_spaces:
-                # Check if any distro is using WSL2 (version 2)
-                return "2" in output
-        return False
+        out = run(["rocm-smi", "--showproductname"], capture=True, check=False)
+        if out and "GPU" in out:
+            name = None
+            for line in out.split("\n"):
+                if "Card series:" in line or "Card model:" in line:
+                    name = line.split(":")[-1].strip()
+                    break
+                if "Radeon" in line or "AMD" in line:
+                    name = line.strip()
+                    break
+            if name:
+                # Try VRAM detection
+                vram = 0.0
+                for pattern, known in AMD_VRAM_TABLE.items():
+                    if pattern in name:
+                        vram = known
+                        break
+                return True, name, vram
     except Exception:
-        return False
+        pass
+    return False, None, 0.0
 
 
-def install_wsl2_windows() -> bool:
-    """Guide user through WSL2 installation on Windows."""
-    print_header("WSL2 Installation Required")
-
-    print("""
-AMD GPU support on Windows requires WSL2 (Windows Subsystem for Linux 2).
-
-This will:
-  1. Install WSL2 with Ubuntu
-  2. Require a system reboot
-  3. After reboot, run this setup wizard again to install ROCm
-
-""")
-
-    if not prompt_yes_no("Install WSL2 now?", default=True):
-        return False
-
-    print_step("Installing WSL2...")
-    print("This will open a PowerShell window with administrator privileges.")
-    print()
-    print_warning("IMPORTANT: WSL2 installation requires user interaction!")
-    print("You will need to:")
-    print("  1. Approve the UAC prompt")
-    print("  2. Wait for WSL2 to download and install")
-    print("  3. CREATE A UNIX USER ACCOUNT when prompted:")
-    print("     - Enter a username (e.g., 'josh')")
-    print("     - Enter a password")
-    print("     - Confirm the password")
-    print("  4. Wait for installation to complete")
-    print("  5. Reboot your computer")
-    print("  6. Run 'python setup.py' again after reboot")
-    print()
-
-    if not prompt_yes_no("Continue?", default=True):
-        return False
-
-    # Create a PowerShell script to install WSL2
-    ps_script = """
-    Write-Host "======================================================================" -ForegroundColor Cyan
-    Write-Host "  WSL2 Installation" -ForegroundColor Cyan
-    Write-Host "======================================================================" -ForegroundColor Cyan
-    Write-Host ""
-    Write-Host "IMPORTANT: WSL2 will prompt you to create a Unix user account." -ForegroundColor Yellow
-    Write-Host "You will need to:" -ForegroundColor Yellow
-    Write-Host "  1. Enter a username (e.g., 'josh')" -ForegroundColor White
-    Write-Host "  2. Enter a password" -ForegroundColor White
-    Write-Host "  3. Confirm the password" -ForegroundColor White
-    Write-Host ""
-    Write-Host "This is normal and required. DO NOT close the window during setup." -ForegroundColor Yellow
-    Write-Host ""
-    Write-Host "======================================================================" -ForegroundColor Cyan
-    Write-Host ""
-    Write-Host "Starting installation..." -ForegroundColor Green
-    Write-Host ""
-
-    try {
-        wsl --install
-        $exitCode = $LASTEXITCODE
-        Write-Host ""
-        Write-Host "======================================================================" -ForegroundColor Cyan
-
-        if ($exitCode -eq 0) {
-            Write-Host "Installation initiated successfully!" -ForegroundColor Green
-            Write-Host ""
-            Write-Host "NEXT STEPS:" -ForegroundColor Yellow
-            Write-Host "  1. Wait for installation to complete" -ForegroundColor White
-            Write-Host "  2. REBOOT your computer" -ForegroundColor White
-            Write-Host "  3. After reboot, run: python setup.py" -ForegroundColor White
-        } else {
-            Write-Host "Installation may have encountered issues (exit code: $exitCode)" -ForegroundColor Yellow
-            Write-Host "Check the output above for details." -ForegroundColor White
-        }
-    } catch {
-        Write-Host "ERROR: Installation failed" -ForegroundColor Red
-        Write-Host $_.Exception.Message -ForegroundColor Red
-    }
-
-    Write-Host ""
-    Write-Host "======================================================================" -ForegroundColor Cyan
-    Write-Host ""
-    Read-Host "Press Enter to close this window"
-    """
-
-    import tempfile
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.ps1', delete=False) as f:
-        f.write(ps_script)
-        ps_file = f.name
-
+def _check_ollama_gpu() -> bool:
+    """Check if Ollama is currently using GPU via 'ollama ps'."""
     try:
-        # Run PowerShell as admin with -NoExit and -Wait to keep window open
-        run_command([
-            "powershell", "-Command",
-            f"Start-Process powershell -ArgumentList '-NoExit -ExecutionPolicy Bypass -File {ps_file}' -Verb RunAs -Wait"
-        ], check=False)
-
-        print()
-        print_warning("WSL2 installation started in PowerShell window.")
-        print_warning("After installation completes and you reboot, run:")
-        print_warning("  python setup.py")
-        print()
-        return False  # Return False to stop current setup
-    except Exception as e:
-        print_error(f"Failed to start WSL2 installation: {e}")
-        print()
-        print("Manual installation steps:")
-        print("  1. Open PowerShell as Administrator")
-        print("  2. Run: wsl --install")
-        print("  3. Reboot your computer")
-        print("  4. Run 'python setup.py' again")
-        return False
-    finally:
-        try:
-            os.unlink(ps_file)
-        except:
-            pass
-
-
-def install_rocm_wsl2() -> bool:
-    """Guide user through ROCm installation in WSL2."""
-    print_header("ROCm Installation in WSL2")
-
-    print("""
-Installing ROCm in WSL2 will enable GPU acceleration for your AMD GPU.
-
-This will:
-  1. Install AMD GPU drivers in WSL2 Ubuntu
-  2. Install ROCm 6.1+ toolkit
-  3. Configure GPU access
-
-This may take 10-20 minutes.
-""")
-
-    if not prompt_yes_no("Install ROCm in WSL2 now?", default=True):
-        return False
-
-    print_step("Installing ROCm in WSL2...")
-
-    # ROCm installation script for WSL2
-    wsl_commands = [
-        "sudo apt-get update",
-        "wget https://repo.radeon.com/amdgpu-install/latest/ubuntu/jammy/amdgpu-install_6.1.60101-1_all.deb",
-        "sudo apt install -y ./amdgpu-install_6.1.60101-1_all.deb",
-        "sudo amdgpu-install -y --usecase=rocm",
-        "sudo usermod -a -G video $USER",
-        "sudo usermod -a -G render $USER",
-    ]
-
-    try:
-        for cmd in wsl_commands:
-            print_step(f"Running: {cmd}")
-            result = subprocess.run(
-                ["wsl", "bash", "-c", cmd],
-                capture_output=False,
-                text=True
-            )
-            if result.returncode != 0:
-                print_warning(f"Command failed (exit code {result.returncode}), continuing...")
-
-        print_success("ROCm installation complete!")
-        print()
-        print_step("Verifying ROCm installation...")
-
-        # Verify ROCm installation
-        verify_result = run_command(
-            ["wsl", "bash", "-c", "rocm-smi"],
-            capture=True,
-            check=False
-        )
-
-        if verify_result and "GPU" in verify_result:
-            print_success("ROCm installed successfully!")
-            print()
-            print("Your AMD GPU should now be detected.")
-            print("The setup wizard will continue with GPU configuration.")
+        out = run(["ollama", "ps"], capture=True, check=False)
+        if out and "GPU" in out.upper():
             return True
-        else:
-            print_warning("ROCm installed but GPU not detected yet.")
-            print_warning("You may need to:")
-            print_warning("  1. Close and reopen your terminal")
-            print_warning("  2. Restart Docker Desktop")
-            print_warning("  3. Run 'python setup.py' again")
-            return False
-
-    except Exception as e:
-        print_error(f"ROCm installation failed: {e}")
-        print()
-        print("Manual installation steps:")
-        print("  1. Open WSL2: wsl")
-        print("  2. Run these commands:")
-        for cmd in wsl_commands:
-            print(f"     {cmd}")
-        return False
+    except Exception:
+        pass
+    return False
 
 
-def detect_ram() -> float:
-    """Detect total system RAM in GB."""
-    print_step("Detecting system RAM...")
-    ram_bytes = psutil.virtual_memory().total
-    ram_gb = ram_bytes / (1024 ** 3)
-    print_success(f"RAM detected: {ram_gb:.1f} GB")
-    return ram_gb
+def step_hardware() -> dict:
+    banner("Step 4 / 8 : Hardware Detection")
 
+    import psutil
 
-def detect_cpu() -> int:
-    """Detect CPU core count."""
-    print_step("Detecting CPU cores...")
-    cores = psutil.cpu_count(logical=False) or psutil.cpu_count()
-    print_success(f"CPU cores detected: {cores}")
-    return cores
-
-
-def detect_hardware() -> Dict:
-    """Detect all hardware."""
-    print_header("Phase 2: Hardware Detection")
-
-    # Try NVIDIA first, then AMD with ROCm
-    has_nvidia, nvidia_name, nvidia_vram = detect_nvidia_gpu()
-    has_amd_rocm, amd_rocm_name, amd_rocm_vram = detect_amd_gpu()
-
-    # Also check for AMD GPU on Windows (even if ROCm not installed)
-    import platform
-    has_amd_windows, amd_windows_name, amd_windows_vram = False, None, None
-    if platform.system() == "Windows" and not has_amd_rocm:
-        has_amd_windows, amd_windows_name, amd_windows_vram = detect_amd_gpu_windows()
-
-    # Determine which GPU to use
-    has_gpu = has_nvidia or has_amd_rocm or has_amd_windows
-    gpu_type = None
+    # GPU detection
+    has_gpu = False
+    gpu_type = "none"
     gpu_name = None
-    vram_gb = 0.0
-    docker_runtime_ok = False
-    use_native_ollama = False  # Use native Ollama instead of Docker (Windows with GPU)
+    vram = 0.0
 
-    if has_nvidia:
-        gpu_type = "nvidia"
-        gpu_name = nvidia_name
-        vram_gb = nvidia_vram or 0.0
+    found_nv, nv_name, nv_vram = _detect_nvidia()
+    if found_nv:
+        has_gpu, gpu_type, gpu_name, vram = True, "nvidia", nv_name, nv_vram
+        ok(f"NVIDIA GPU: {nv_name} ({nv_vram:.0f} GB VRAM)")
+    else:
+        info("No NVIDIA GPU detected")
 
-        print_step("Checking nvidia-docker runtime...")
-        try:
-            output = run_command(["docker", "info", "--format", "{{.Runtimes}}"], capture=True)
-            if "nvidia" in output:
-                print_success("nvidia-docker runtime available")
-                docker_runtime_ok = True
+        found_amd, amd_name, amd_vram = False, None, 0.0
+        if platform.system() == "Windows":
+            found_amd, amd_name, amd_vram = _detect_amd_windows()
+        if not found_amd:
+            found_amd, amd_name, amd_vram = _detect_amd_rocm()
+
+        if found_amd:
+            has_gpu, gpu_type, gpu_name, vram = True, "amd", amd_name, amd_vram
+            ok(f"AMD GPU: {amd_name} ({amd_vram:.0f} GB VRAM)")
+
+            # Check if Ollama is actually using the GPU
+            if _check_ollama_gpu():
+                ok("Ollama is using GPU acceleration")
             else:
-                print_warning("nvidia-docker runtime NOT available. Install nvidia-container-toolkit.")
-                print_warning("GPU detection succeeded but Docker won't be able to use it without nvidia-docker.")
-        except Exception:
-            print_warning("Could not check Docker runtimes")
-
-    elif has_amd_rocm:
-        # AMD GPU with ROCm already installed
-        gpu_type = "amd"
-        gpu_name = amd_rocm_name
-        vram_gb = amd_rocm_vram or 0.0
-
-        print_success(f"AMD GPU with ROCm detected: {gpu_name}")
-        hip_path = os.environ.get("HIP_PATH") or os.environ.get("ROCM_PATH")
-        if hip_path:
-            print_success(f"ROCm installation found at: {hip_path}")
-        docker_runtime_ok = True
-
-    elif has_amd_windows:
-        # AMD GPU on Windows - check if Ollama already has GPU access
-        print_success(f"AMD GPU detected: {amd_windows_name}")
-        if amd_windows_vram:
-            print_success(f"VRAM detected: {amd_windows_vram:.1f} GB")
-
-        print()
-        print_step("Checking if native Ollama is using GPU...")
-
-        ollama_using_gpu, processor_info = check_ollama_using_gpu()
-        use_native_ollama = False  # Track if we should use native Ollama instead of Docker
-        if ollama_using_gpu:
-            print_success("Native Windows Ollama is already using your GPU!")
-            print_success("No WSL2 or ROCm installation needed.")
-            print()
-            gpu_type = "amd"
-            gpu_name = amd_windows_name
-            vram_gb = amd_windows_vram or 0.0
-            docker_runtime_ok = True
-            use_native_ollama = True  # Use native Ollama, skip Docker Ollama
+                warn("Ollama may not be using GPU (check 'ollama ps' after loading a model)")
         else:
-            # Ollama not using GPU - try WSL2 + ROCm approach
-            print_warning("Ollama is not currently using GPU.")
-            print_warning("Trying WSL2 + ROCm approach...")
-            print()
+            info("No AMD GPU detected — will use CPU mode")
 
-            # Check if WSL2 is installed
-            wsl2_installed = check_wsl2_installed()
+    # RAM
+    ram = psutil.virtual_memory().total / (1024 ** 3)
+    ok(f"RAM: {ram:.0f} GB")
 
-            if not wsl2_installed:
-                print_warning("WSL2 is not installed.")
-                print()
-                if prompt_yes_no("Would you like to install WSL2 and ROCm now?", default=True):
-                    if install_wsl2_windows():
-                        # WSL2 installation succeeded, continue
-                        wsl2_installed = True
-                    else:
-                        # WSL2 installation requires reboot, exit setup
-                        print()
-                        print_warning("Setup will exit. Please reboot and run 'python setup.py' again.")
-                        sys.exit(0)
+    # CPU
+    cores = psutil.cpu_count(logical=False) or psutil.cpu_count()
+    ok(f"CPU: {cores} cores")
 
-            if wsl2_installed:
-                # WSL2 installed, offer to install ROCm
-                print_success("WSL2 is installed.")
-                print()
-
-                # Check if ROCm already installed in WSL2
-                rocm_in_wsl2 = False
-                try:
-                    output = run_command(["wsl", "bash", "-c", "which rocm-smi"], capture=True, check=False)
-                    rocm_in_wsl2 = output and "rocm-smi" in output
-                except:
-                    pass
-
-                if not rocm_in_wsl2:
-                    if prompt_yes_no("Would you like to install ROCm in WSL2 now?", default=True):
-                        if install_rocm_wsl2():
-                            # ROCm installed successfully
-                            gpu_type = "amd"
-                            gpu_name = amd_windows_name
-                            vram_gb = amd_windows_vram or 0.0
-                            docker_runtime_ok = True
-                        else:
-                            # ROCm installation failed or incomplete
-                            print()
-                            print_warning("Continuing with CPU-only mode.")
-                            print_warning("You can install ROCm manually later and re-run setup.")
-                    else:
-                        print()
-                        print_warning("Continuing with CPU-only mode.")
-                        print_warning("To enable GPU later, install ROCm in WSL2 and re-run setup.")
-                else:
-                    # ROCm already installed
-                    print_success("ROCm is already installed in WSL2!")
-                    gpu_type = "amd"
-                    gpu_name = amd_windows_name
-                    vram_gb = amd_windows_vram or 0.0
-                    docker_runtime_ok = True
-
-    ram_gb = detect_ram()
-    cpu_cores = detect_cpu()
-
-    return {
-        "has_gpu": has_gpu,
-        "gpu_type": gpu_type,
-        "gpu_name": gpu_name,
-        "vram_gb": vram_gb,
-        "ram_gb": ram_gb,
-        "cpu_cores": cpu_cores,
-        "docker_runtime_ok": docker_runtime_ok,
-        "use_native_ollama": use_native_ollama,
+    hw = {
+        "has_gpu": has_gpu, "gpu_type": gpu_type,
+        "gpu_name": gpu_name, "vram": vram,
+        "ram": ram, "cores": cores,
     }
+    return hw
 
 
-# ----------------------------
-# Phase 3: Model Recommendations
-# ----------------------------
+# ═══════════════════════════════════════════════════════════════════
+# Step 5: Model selection & download
+# ═══════════════════════════════════════════════════════════════════
 
-def recommend_models(hw: Dict) -> Tuple[str, str, str, str, str]:
-    """
-    Recommend models based on hardware.
-    Returns: (profile_name, extract_model, verify_model, write_model)
-    """
-    print_header("Phase 3: Model Recommendations")
+def _ollama_models() -> set:
+    """Get set of model names currently available in Ollama."""
+    resp = http_get(f"{OLLAMA_URL}/api/tags")
+    if not resp:
+        return set()
+    try:
+        data = json.loads(resp)
+        return {m["name"] for m in data.get("models", [])}
+    except (json.JSONDecodeError, KeyError):
+        return set()
 
-    vram = hw["vram_gb"]
-    ram = hw["ram_gb"]
 
-    # Find best matching profile
-    selected = None
-    for min_vram, min_ram, profile, extract, verify, write in MODEL_RECOMMENDATION_MATRIX:
+def step_models(hw: dict, check_only: bool = False) -> dict:
+    banner("Step 5 / 8 : Model Selection & Download")
+
+    vram = hw["vram"]
+    ram = hw["ram"]
+
+    # Find best tier
+    extract = verify = write = "phi3:mini"
+    tier_name = "Minimum"
+    for min_vram, min_ram, label, e, v, w in MODEL_TIERS:
         if vram >= min_vram and ram >= min_ram:
-            selected = (profile, extract, verify, write)
+            extract, verify, write = e, v, w
+            tier_name = label
             break
 
-    if not selected:
-        # Fallback to minimum
-        selected = MODEL_RECOMMENDATION_MATRIX[-1][2:]
-
-    profile_name, extract_model, verify_model, write_model = selected
-
-    print(f"Hardware profile: {profile_name}")
-    print(f"  - GPU: {hw['gpu_name'] or 'None'}")
-    print(f"  - VRAM: {vram:.1f} GB")
-    print(f"  - RAM: {ram:.1f} GB")
-    print(f"  - CPU cores: {hw['cpu_cores']}")
-    print()
-    print("Recommended models:")
-    print(f"  - Extract: {extract_model}")
-    print(f"  - Verify:  {verify_model}")
-    print(f"  - Write:   {write_model}")
+    print(f"  Hardware tier: {tier_name}")
+    print(f"  Recommended models:")
+    print(f"    Extract:  {extract}")
+    print(f"    Verify:   {verify}")
+    print(f"    Write:    {write}")
     print()
 
-    if not prompt_yes_no("Use these models?", default=True):
-        print("\nEnter custom models:")
-        extract_model = input(f"  Extract model [{extract_model}]: ").strip() or extract_model
-        verify_model = input(f"  Verify model  [{verify_model}]: ").strip() or verify_model
-        write_model = input(f"  Write model   [{write_model}]: ").strip() or write_model
+    if not check_only and not ask("Use these models?"):
+        extract = input(f"  Extract model [{extract}]: ").strip() or extract
+        verify  = input(f"  Verify model  [{verify}]: ").strip() or verify
+        write   = input(f"  Write model   [{write}]: ").strip() or write
 
-    print_success(f"Models selected: {extract_model}, {verify_model}, {write_model}")
+    models = {"extract": extract, "verify": verify, "write": write}
+    unique = list(set(models.values()))
 
-    return profile_name, extract_model, verify_model, write_model
+    # Check what's already pulled
+    available = _ollama_models()
+    already = [m for m in unique if m in available]
+    needed  = [m for m in unique if m not in available]
 
+    if already:
+        ok(f"Already pulled: {', '.join(already)}")
+    if not needed:
+        ok("All models available")
+        return models
 
-# ----------------------------
-# Phase 4: Environment Configuration
-# ----------------------------
+    if check_only:
+        fail(f"Missing models: {', '.join(needed)}")
+        return models
 
-def generate_env_file(hw: Dict, models: Tuple[str, str, str, str]) -> None:
-    """Generate .env file with configuration."""
-    print_header("Phase 4: Environment Configuration")
+    print(f"\n  Need to download {len(needed)} model(s): {', '.join(needed)}")
+    print(f"  This may take a while (models are 4-20 GB each).\n")
 
-    profile_name, extract_model, verify_model, write_model = models
+    if not ask("Download now?"):
+        warn("Skipping model download — you can pull models later with 'ollama pull <model>'")
+        return models
 
-    env_content = f"""# Evident Video Fact Checker - Environment Configuration
-# Generated by setup.py
+    for model in needed:
+        info(f"Pulling {model}...")
+        try:
+            subprocess.run(["ollama", "pull", model], check=True)
+            ok(f"Downloaded {model}")
+        except subprocess.CalledProcessError:
+            fail(f"Failed to download {model}")
+            print(f"  Try manually: ollama pull {model}")
 
-# Service URLs (Docker internal network)
-EVIDENT_OLLAMA_BASE_URL=http://ollama:11434
-EVIDENT_SEARXNG_BASE_URL=http://searxng:8080
+    # Verify
+    available = _ollama_models()
+    still_missing = [m for m in unique if m not in available]
+    if still_missing:
+        warn(f"Still missing: {', '.join(still_missing)}")
+    else:
+        ok("All models ready")
 
-# Model selections
-EVIDENT_MODEL_EXTRACT={extract_model}
-EVIDENT_MODEL_VERIFY={verify_model}
-EVIDENT_MODEL_WRITE={write_model}
-
-# Model temperatures
-EVIDENT_TEMPERATURE_EXTRACT=0.1
-EVIDENT_TEMPERATURE_VERIFY=0.0
-EVIDENT_TEMPERATURE_WRITE=0.5
-
-# Hardware configuration
-EVIDENT_GPU_ENABLED={'true' if hw['has_gpu'] and hw['docker_runtime_ok'] else 'false'}
-EVIDENT_GPU_TYPE={hw.get('gpu_type') or 'none'}
-EVIDENT_GPU_MEMORY_GB={hw['vram_gb']:.1f}
-EVIDENT_RAM_GB={hw['ram_gb']:.1f}
-
-# Pipeline budgets
-EVIDENT_MAX_CLAIMS=25
-EVIDENT_CACHE_TTL_DAYS=7
-
-# Logging
-EVIDENT_LOG_LEVEL=INFO
-"""
-
-    if os.path.exists(".env"):
-        if not prompt_yes_no(".env file already exists. Overwrite?", default=False):
-            print_warning("Skipping .env generation")
-            return
-        shutil.copy(".env", ".env.backup")
-        print_step("Backed up existing .env to .env.backup")
-
-    with open(".env", "w", encoding="utf-8") as f:
-        f.write(env_content)
-
-    print_success(".env file created")
+    return models
 
 
-# ----------------------------
-# Phase 5: Directory Structure
-# ----------------------------
+# ═══════════════════════════════════════════════════════════════════
+# Step 6: SearXNG setup (Docker)
+# ═══════════════════════════════════════════════════════════════════
 
-def create_directories() -> None:
-    """Create required directory structure."""
-    print_header("Phase 5: Directory Structure")
-
-    dirs = [
-        "data",
-        "data/cache",
-        "data/runs",
-        "data/store",
-        "data/inbox",
-        "data/logs",
-        "data/ollama",
-        "searxng",
-    ]
-
-    for dir_path in dirs:
-        os.makedirs(dir_path, exist_ok=True)
-        print_step(f"Created: {dir_path}/")
-
-    print_success("Directory structure created")
+def _searxng_is_running() -> bool:
+    resp = http_get(f"{SEARXNG_URL}/search?q=test&format=json")
+    return resp is not None
 
 
-# ----------------------------
-# Phase 6: Migration
-# ----------------------------
+def _create_searxng_config() -> None:
+    """Generate searxng/settings.yml and limiter.toml."""
+    SEARXNG_DIR.mkdir(exist_ok=True)
 
-def migrate_existing_data() -> None:
-    """Migrate existing data from root to data/ subdirectory."""
-    print_header("Phase 6: Data Migration")
-
-    legacy_dirs = ["runs", "cache", "store", "inbox", "logs"]
-    found_legacy = [d for d in legacy_dirs if os.path.exists(d) and os.path.isdir(d)]
-
-    if not found_legacy:
-        print_step("No existing data found. Skipping migration.")
-        return
-
-    print(f"Found existing data directories: {', '.join(found_legacy)}")
-    if not prompt_yes_no("Migrate to data/ subdirectory?", default=True):
-        print_warning("Skipping migration")
-        return
-
-    os.makedirs(".backup", exist_ok=True)
-
-    for dir_name in found_legacy:
-        src = dir_name
-        dst = f"data/{dir_name}"
-        backup = f".backup/{dir_name}"
-
-        # Copy to data/
-        if os.path.exists(dst):
-            print_step(f"{dst} already exists, merging...")
-            shutil.copytree(src, dst, dirs_exist_ok=True)
-        else:
-            shutil.copytree(src, dst)
-            print_step(f"Copied {src}/ → {dst}/")
-
-        # Backup original
-        if os.path.exists(backup):
-            shutil.rmtree(backup)
-        shutil.move(src, backup)
-        print_step(f"Backed up {src}/ → {backup}/")
-
-    print_success("Migration complete. Originals backed up to .backup/")
-
-
-# ----------------------------
-# Phase 7: SearXNG Configuration
-# ----------------------------
-
-def create_searxng_config() -> None:
-    """Create SearXNG configuration files."""
-    print_header("Phase 7: SearXNG Configuration")
-
-    # Generate random secret key
-    secret_key = secrets.token_hex(32)
-
-    settings_yml = f"""# SearXNG settings for Evident Video Fact Checker
-# Generated by setup.py
-
+    settings_path = SEARXNG_DIR / "settings.yml"
+    if not settings_path.exists():
+        secret = secrets.token_hex(32)
+        settings_path.write_text(f"""# SearXNG settings — generated by setup.py
 use_default_settings: true
 
 server:
-  secret_key: "{secret_key}"
+  secret_key: "{secret}"
   limiter: true
   image_proxy: true
 
@@ -1100,386 +677,453 @@ engines:
     disabled: false
   - name: wikipedia
     disabled: false
-"""
+""", encoding="utf-8")
+        ok("Created searxng/settings.yml")
+    else:
+        ok("searxng/settings.yml already exists")
 
-    limiter_toml = """# SearXNG rate limiter configuration
-
+    limiter_path = SEARXNG_DIR / "limiter.toml"
+    if not limiter_path.exists():
+        limiter_path.write_text("""# SearXNG rate limiter config
 [botdetection.ip_limit]
 link_token = true
-"""
-
-    with open("searxng/settings.yml", "w", encoding="utf-8") as f:
-        f.write(settings_yml)
-    print_success("Created searxng/settings.yml")
-
-    with open("searxng/limiter.toml", "w", encoding="utf-8") as f:
-        f.write(limiter_toml)
-    print_success("Created searxng/limiter.toml")
-
-
-# ----------------------------
-# Phase 8: Service Initialization
-# ----------------------------
-
-def start_services(hw: Dict) -> bool:
-    """Start Docker services."""
-    print_header("Phase 8: Service Initialization")
-
-    use_native_ollama = hw.get("use_native_ollama", False)
-
-    # Determine compose files
-    compose_files = ["-f", "docker-compose.yml"]
-    if use_native_ollama:
-        # Windows with native Ollama using GPU - use native-ollama compose
-        compose_files.extend(["-f", "docker-compose.native-ollama.yml"])
-        print_step("Using native Ollama mode (GPU already working)")
-        print_success("Native Ollama at localhost:11434 will be used")
-        print()
-    elif hw["has_gpu"] and hw["docker_runtime_ok"]:
-        gpu_type = hw.get("gpu_type", "nvidia")
-        if gpu_type == "nvidia":
-            compose_files.extend(["-f", "docker-compose.gpu.yml"])
-            print_step("Using NVIDIA GPU configuration")
-        elif gpu_type == "amd":
-            compose_files.extend(["-f", "docker-compose.amd.yml"])
-            print_step("Using AMD GPU configuration with ROCm")
-            print_warning("AMD GPU support requires:")
-            print_warning("  - ROCm 6.1+ installed on host")
-            print_warning("  - WSL2 with ROCm (Windows) or native ROCm (Linux)")
-            print_warning("  - Ollama with ROCm support")
-            print()
-            if not prompt_yes_no("Continue with AMD GPU setup?", default=True):
-                print_step("Falling back to CPU-only mode")
-                compose_files = ["-f", "docker-compose.yml"]
+""", encoding="utf-8")
+        ok("Created searxng/limiter.toml")
     else:
-        print_step("Using CPU-only configuration")
-
-    # Start Redis
-    print_step("Starting Redis...")
-    try:
-        run_command(["docker", "compose"] + compose_files + ["up", "-d", "redis"])
-        print_success("Redis started")
-    except subprocess.CalledProcessError:
-        print_error("Failed to start Redis")
-        return False
-
-    if use_native_ollama:
-        # Check that native Ollama is running
-        print_step("Checking native Ollama...")
-        try:
-            import urllib.request
-            req = urllib.request.Request("http://localhost:11434/api/tags")
-            with urllib.request.urlopen(req, timeout=5) as resp:
-                print_success("Native Ollama is running")
-        except Exception as e:
-            print_error("Native Ollama is not running!")
-            print_error("Please start Ollama and run setup again.")
-            print_error("  - On Windows: Start Ollama from the system tray or run 'ollama serve'")
-            return False
-    else:
-        # Start Docker Ollama
-        print_step("Starting Ollama...")
-        try:
-            run_command(["docker", "compose"] + compose_files + ["up", "-d", "ollama"])
-            print_success("Ollama started")
-        except subprocess.CalledProcessError:
-            print_error("Failed to start Ollama")
-            return False
-
-        # Wait for Ollama healthcheck
-        print_step("Waiting for Ollama to be ready...")
-        import time
-        max_wait = 120
-        waited = 0
-        while waited < max_wait:
-            try:
-                output = run_command(
-                    ["docker", "compose"] + compose_files + ["ps", "--format", "json"],
-                    capture=True
-                )
-                services = json.loads(f"[{output.replace('}{', '},{')}]")
-                ollama_svc = next((s for s in services if s.get("Service") == "ollama"), None)
-                if ollama_svc and ollama_svc.get("Health") == "healthy":
-                    print_success("Ollama is ready")
-                    break
-            except Exception:
-                pass
-            time.sleep(5)
-            waited += 5
-            print(f"  Waiting... ({waited}s/{max_wait}s)")
-        else:
-            print_warning("Ollama did not become healthy within timeout. Continuing anyway.")
-
-    return True
+        ok("searxng/limiter.toml already exists")
 
 
-# ----------------------------
-# Phase 9: Model Download
-# ----------------------------
+def step_searxng(check_only: bool = False) -> bool:
+    banner("Step 6 / 8 : SearXNG Search Engine")
 
-def download_models(models: Tuple[str, str, str, str], hw: Dict) -> bool:
-    """Download Ollama models."""
-    print_header("Phase 9: Model Download")
-
-    _, extract_model, verify_model, write_model = models
-    unique_models = list(set([extract_model, verify_model, write_model]))
-
-    # Check which models are already available
-    use_native_ollama = hw.get("use_native_ollama", False)
-    existing_models = set()
-
-    # Determine compose files for Docker mode
-    compose_files = ["-f", "docker-compose.yml"]
-    if not use_native_ollama and hw["has_gpu"] and hw["docker_runtime_ok"]:
-        gpu_type = hw.get("gpu_type", "nvidia")
-        if gpu_type == "nvidia":
-            compose_files.extend(["-f", "docker-compose.gpu.yml"])
-        elif gpu_type == "amd":
-            compose_files.extend(["-f", "docker-compose.amd.yml"])
-
-    if use_native_ollama:
-        # Check native Ollama for existing models
-        try:
-            import urllib.request
-            req = urllib.request.Request("http://localhost:11434/api/tags")
-            with urllib.request.urlopen(req, timeout=10) as resp:
-                data = json.loads(resp.read())
-                for m in data.get("models", []):
-                    existing_models.add(m.get("name", ""))
-        except Exception:
-            pass
-
-    # Filter to models that need downloading
-    needed_models = [m for m in unique_models if m not in existing_models]
-    already_have = [m for m in unique_models if m in existing_models]
-
-    if already_have:
-        print(f"Already have: {', '.join(already_have)}")
-
-    if not needed_models:
-        print_success("All models already available!")
+    # Already running?
+    if _searxng_is_running():
+        ok(f"SearXNG already running at {SEARXNG_URL}")
         return True
 
-    print(f"Downloading {len(needed_models)} model(s): {', '.join(needed_models)}")
-    print("This may take 30-120 minutes depending on your connection.\n")
-
-    for model in needed_models:
-        print_step(f"Pulling {model}...")
-        try:
-            if use_native_ollama:
-                # Use native ollama CLI
-                subprocess.run(["ollama", "pull", model], check=True)
-            else:
-                # Use Docker Ollama
-                subprocess.run(
-                    ["docker", "compose"] + compose_files + ["exec", "-T", "ollama", "ollama", "pull", model],
-                    check=True
-                )
-            print_success(f"{model} downloaded")
-        except subprocess.CalledProcessError:
-            print_error(f"Failed to download {model}")
-            return False
-
-    print_success("All models downloaded")
-    return True
-
-
-# ----------------------------
-# Phase 10: SearXNG Startup & Validation
-# ----------------------------
-
-def start_searxng_and_validate(hw: Dict) -> bool:
-    """Start SearXNG and validate all services."""
-    print_header("Phase 10: SearXNG Startup & Validation")
-
-    compose_files = ["-f", "docker-compose.yml"]
-    if hw["has_gpu"] and hw["docker_runtime_ok"]:
-        gpu_type = hw.get("gpu_type", "nvidia")
-        if gpu_type == "nvidia":
-            compose_files.extend(["-f", "docker-compose.gpu.yml"])
-        elif gpu_type == "amd":
-            compose_files.extend(["-f", "docker-compose.amd.yml"])
-
-    # Start SearXNG
-    print_step("Starting SearXNG...")
-    try:
-        run_command(["docker", "compose"] + compose_files + ["up", "-d", "searxng"])
-        print_success("SearXNG started")
-    except subprocess.CalledProcessError:
-        print_error("Failed to start SearXNG")
+    if check_only:
+        fail(f"SearXNG not responding at {SEARXNG_URL}")
         return False
 
-    # Wait for healthcheck
-    print_step("Waiting for SearXNG to be ready...")
-    import time
-    max_wait = 60
-    waited = 0
-    while waited < max_wait:
-        try:
-            output = run_command(
-                ["docker", "compose"] + compose_files + ["ps", "--format", "json"],
-                capture=True
-            )
-            services = json.loads(f"[{output.replace('}{', '},{')}]")
-            searxng_svc = next((s for s in services if s.get("Service") == "searxng"), None)
-            if searxng_svc and searxng_svc.get("Health") == "healthy":
-                print_success("SearXNG is ready")
-                break
-        except Exception:
-            pass
+    # Check compose file exists
+    if not COMPOSE_FILE.exists():
+        fail(f"Missing {COMPOSE_FILE}")
+        return False
+
+    # Generate config files
+    _create_searxng_config()
+
+    # Start containers
+    info("Starting SearXNG + Redis via Docker Compose...")
+    try:
+        run(["docker", "compose", "-f", str(COMPOSE_FILE), "up", "-d"], timeout=60)
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
+        fail(f"Docker Compose failed: {e}")
+        print("  Check: is Docker Desktop running?")
+        print(f"  Manual start: docker compose -f {COMPOSE_FILE} up -d")
+        return False
+
+    # Wait for health
+    info("Waiting for SearXNG to be ready (this can take 30-90s)...")
+    for i in range(18):  # 90 seconds
         time.sleep(5)
-        waited += 5
-        print(f"  Waiting... ({waited}s/{max_wait}s)")
+        if _searxng_is_running():
+            ok(f"SearXNG ready at {SEARXNG_URL}")
+            return True
+        info(f"Waiting... ({(i+1)*5}s)")
+
+    # Might still be starting — check container status
+    warn("SearXNG not responding yet")
+    try:
+        out = run(["docker", "compose", "-f", str(COMPOSE_FILE), "ps"],
+                  capture=True, check=False)
+        if out:
+            print(f"\n{out}\n")
+    except Exception:
+        pass
+    warn("SearXNG may need more time. Check: docker compose -f docker-compose.searxng.yml logs searxng")
+    return False
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Step 7: Configuration files
+# ═══════════════════════════════════════════════════════════════════
+
+CONFIG_TEMPLATE = """\
+ollama:
+  base_url: "{ollama_url}"
+
+  model_extract: "{extract}"
+  model_verify: "{verify}"
+  model_write: "{write}"
+  model_consolidate: "{extract}"
+  model_verify_group: "{verify}"
+
+  temperature_extract: 0.0
+  temperature_verify: 0.0
+  temperature_consolidate: 0.1
+  temperature_write: 0.5
+  model_query_gen: "{extract}"
+  temperature_query_gen: 0.3
+
+searx:
+  base_url: "{searxng_url}"
+  format: "json"
+  num_results: 10
+
+  deny_domains:
+    - "pinterest.com"
+    - "facebook.com"
+    - "twitter.com"
+    - "x.com"
+    - "tiktok.com"
+    - "instagram.com"
+    - "medium.com"
+    - "substack.com"
+    - "reddit.com"
+    - "quora.com"
+    - "yahoo.com"
+    - "tumblr.com"
+    - "blogger.com"
+    - "blogspot.com"
+    - "wordpress.com"
+
+budgets:
+  max_claims: 25
+  max_sources_per_claim: 5
+  max_failures_per_domain: 6
+  max_fetches_per_run: 80
+  fetch_timeout_sec: 25
+  snippets_per_source: 4
+  snippet_max_chars: 1200
+  extract_chunk_overlap: 8
+
+  queries_per_claim: 3
+  enable_query_generation: true
+  query_gen_workers: 3
+  enable_source_prefilter: true
+  min_preview_score: 0.15
+  enable_factcheck_query: true
+
+  second_pass_enabled: true
+  second_pass_max_claims: 12
+  second_pass_extra_sources_per_claim: 5
+  second_pass_extra_fetches: 60
+
+output:
+  timezone: "America/Los_Angeles"
+
+logging:
+  level: "INFO"
+
+cache:
+  url_cache_days: 7
+"""
+
+
+def step_config(models: dict, hw: dict, check_only: bool = False) -> bool:
+    banner("Step 7 / 8 : Configuration Files")
+
+    # config.yaml
+    if CONFIG_FILE.exists():
+        ok(f"config.yaml exists")
+        # Validate it's parseable
+        try:
+            import yaml
+            with open(CONFIG_FILE, encoding="utf-8") as f:
+                cfg = yaml.safe_load(f)
+            if "ollama" in cfg and "searx" in cfg:
+                ok("config.yaml is valid")
+            else:
+                warn("config.yaml missing 'ollama' or 'searx' sections")
+        except Exception as e:
+            warn(f"config.yaml parse error: {e}")
     else:
-        print_warning("SearXNG did not become healthy within timeout")
-
-    # Validate services
-    print_step("Validating services...")
-
-    # Test Ollama
-    try:
-        output = run_command(
-            ["docker", "compose"] + compose_files + ["exec", "-T", "ollama", "curl", "-f", "http://localhost:11434/api/tags"],
-            capture=True
+        if check_only:
+            fail("config.yaml does not exist")
+            return False
+        info("Generating config.yaml...")
+        content = CONFIG_TEMPLATE.format(
+            ollama_url=OLLAMA_URL,
+            searxng_url=SEARXNG_URL,
+            extract=models["extract"],
+            verify=models["verify"],
+            write=models["write"],
         )
-        if output:
-            print_success("Ollama API responding")
-    except subprocess.CalledProcessError:
-        print_error("Ollama API not responding")
-        return False
+        CONFIG_FILE.write_text(content, encoding="utf-8")
+        ok("Created config.yaml")
 
-    # Test SearXNG
-    try:
-        output = run_command(
-            ["docker", "compose"] + compose_files + ["exec", "-T", "searxng", "curl", "-f", "http://localhost:8080/search?q=test&format=json"],
-            capture=True
-        )
-        if output:
-            print_success("SearXNG API responding")
-    except subprocess.CalledProcessError:
-        print_warning("SearXNG API not responding (may need more time)")
+    # .env file
+    if ENV_FILE.exists():
+        ok(".env file exists")
+    else:
+        if check_only:
+            warn(".env file does not exist (optional — config.yaml is primary)")
+        else:
+            info("Generating .env...")
+            env_content = f"""# Evident Video Fact Checker — generated by setup.py
+EVIDENT_OLLAMA_BASE_URL={OLLAMA_URL}
+EVIDENT_SEARXNG_BASE_URL={SEARXNG_URL}
+EVIDENT_MODEL_EXTRACT={models['extract']}
+EVIDENT_MODEL_VERIFY={models['verify']}
+EVIDENT_MODEL_WRITE={models['write']}
+EVIDENT_TEMPERATURE_EXTRACT=0.0
+EVIDENT_TEMPERATURE_VERIFY=0.0
+EVIDENT_TEMPERATURE_WRITE=0.5
+EVIDENT_GPU_ENABLED={'true' if hw['has_gpu'] else 'false'}
+EVIDENT_GPU_TYPE={hw['gpu_type']}
+EVIDENT_GPU_MEMORY_GB={hw['vram']:.1f}
+EVIDENT_RAM_GB={hw['ram']:.1f}
+EVIDENT_MAX_CLAIMS=25
+EVIDENT_CACHE_TTL_DAYS=7
+EVIDENT_LOG_LEVEL=INFO
+"""
+            ENV_FILE.write_text(env_content, encoding="utf-8")
+            ok("Created .env")
+
+    # Directories
+    dirs = ["cache", "runs", "store", "inbox", "logs"]
+    for d in dirs:
+        (PROJECT_ROOT / d).mkdir(exist_ok=True)
+    ok(f"Runtime directories ready: {', '.join(dirs)}")
 
     return True
 
 
-# ----------------------------
+# ═══════════════════════════════════════════════════════════════════
+# Step 8: Validation & Smoke Test
+# ═══════════════════════════════════════════════════════════════════
+
+def step_validate_and_test(models: dict, check_only: bool = False) -> bool:
+    banner("Step 8 / 8 : Validation & Smoke Test")
+
+    all_ok = True
+
+    # ── Service checks ────────────────────────────────────────────
+    print("  Service checks:")
+
+    # Ollama API
+    resp = http_get(f"{OLLAMA_URL}/api/tags")
+    if resp:
+        ok("Ollama API responding")
+        # Check required models
+        available = _ollama_models()
+        for role, model in models.items():
+            if model in available:
+                ok(f"Model '{model}' ({role}) available")
+            else:
+                warn(f"Model '{model}' ({role}) NOT available — run 'ollama pull {model}'")
+                all_ok = False
+    else:
+        fail(f"Ollama not responding at {OLLAMA_URL}")
+        all_ok = False
+
+    # SearXNG API
+    if _searxng_is_running():
+        ok("SearXNG API responding")
+    else:
+        fail(f"SearXNG not responding at {SEARXNG_URL}")
+        all_ok = False
+
+    # Config
+    if CONFIG_FILE.exists():
+        ok("config.yaml present")
+    else:
+        fail("config.yaml missing")
+        all_ok = False
+
+    # Directories
+    for d in ["cache", "runs", "store", "inbox", "logs"]:
+        p = PROJECT_ROOT / d
+        if p.is_dir():
+            ok(f"Directory: {d}/")
+        else:
+            fail(f"Directory missing: {d}/")
+            all_ok = False
+
+    if not all_ok:
+        fail("Some checks failed — fix issues above and re-run 'python setup.py --check'")
+        return False
+
+    # ── Smoke test ────────────────────────────────────────────────
+    print()
+    print("  Smoke test (end-to-end pipeline check):")
+
+    smoke_ok = True
+    t0 = time.time()
+
+    # 1. LLM test — send a simple prompt to Ollama
+    info("Testing LLM (Ollama)...")
+    llm_resp = http_post_json(f"{OLLAMA_URL}/api/generate", {
+        "model": models["extract"],
+        "prompt": "Say hello in one word. /no_think",
+        "stream": False,
+        "options": {"num_predict": 32, "temperature": 0.0},
+    }, timeout=120)
+    if llm_resp:
+        try:
+            data = json.loads(llm_resp)
+            text = data.get("response", "").strip()
+            duration = data.get("total_duration", 0) / 1e9  # nanoseconds → seconds
+            ok(f"LLM responded in {duration:.1f}s ({models['extract']})")
+        except json.JSONDecodeError:
+            ok(f"LLM responded ({models['extract']})")
+    else:
+        fail("LLM did not respond within 120s")
+        smoke_ok = False
+
+    # 2. Search test — query SearXNG
+    info("Testing search (SearXNG)...")
+    search_resp = http_get(
+        f"{SEARXNG_URL}/search?q=python+programming&format=json"
+    )
+    if search_resp:
+        try:
+            data = json.loads(search_resp)
+            n = len(data.get("results", []))
+            ok(f"Search returned {n} results")
+        except json.JSONDecodeError:
+            warn("Search response not valid JSON")
+    else:
+        fail("Search did not respond")
+        smoke_ok = False
+
+    # 3. HTTP fetch test
+    info("Testing HTTP fetch...")
+    fetch_resp = http_get("https://httpbin.org/get", timeout=15)
+    if fetch_resp:
+        ok("HTTP fetch working")
+    else:
+        # httpbin might be blocked; try a simpler test
+        fetch_resp2 = http_get("https://example.com", timeout=15)
+        if fetch_resp2:
+            ok("HTTP fetch working")
+        else:
+            warn("HTTP fetch failed (may be a network issue)")
+
+    elapsed = time.time() - t0
+    print()
+
+    if smoke_ok:
+        ok(f"Smoke test passed ({elapsed:.1f}s)")
+    else:
+        fail("Smoke test had failures — check issues above")
+
+    return smoke_ok
+
+
+# ═══════════════════════════════════════════════════════════════════
 # Main
-# ----------------------------
+# ═══════════════════════════════════════════════════════════════════
 
 def main():
-    """Run interactive setup wizard."""
-    print("""
-=======================================================================
+    check_only = "--check" in sys.argv
 
-              Evident Video Fact Checker - Interactive Setup Wizard
+    mode = "VALIDATE" if check_only else "SETUP"
+    print(f"""
+{'=' * 64}
+  Evident Video Fact Checker — {mode} Wizard
+{'=' * 64}
 
   This wizard will:
-    1. Check prerequisites (Docker, Docker Compose, Python)
-    2. Detect your hardware (GPU, RAM, CPU)
-    3. Recommend models based on your system
-    4. Configure environment variables
-    5. Create directory structure
-    6. Migrate existing data (if any)
-    7. Start Docker services (Redis, Ollama, SearXNG)
-    8. Download Ollama models (30-120 minutes)
-    9. Validate setup
-
-=======================================================================
+    1. Check Python & install pip dependencies
+    2. Verify Ollama LLM service
+    3. Verify Docker (for SearXNG) & FFmpeg
+    4. Detect hardware (GPU, RAM, CPU)
+    5. Select & download Ollama models
+    6. Start SearXNG search engine
+    7. Generate configuration files
+    8. Validate everything & run smoke test
 """)
 
-    if not prompt_yes_no("Continue with setup?", default=True):
-        print("Setup cancelled.")
+    if not check_only and not ask("Continue?"):
+        print("  Setup cancelled.")
         sys.exit(0)
 
-    # Phase 1: Prerequisites
-    prereqs = check_prerequisites()
-    # Hard requirements: Docker, Docker Compose, Python
-    # Soft requirements: FFmpeg (only needed for YouTube Whisper fallback)
-    hard_reqs = {k: v for k, v in prereqs.items() if k != "ffmpeg"}
-    if not all(hard_reqs.values()):
-        print_error("Missing prerequisites. Please install required tools and try again.")
-        sys.exit(1)
-    if not prereqs.get("ffmpeg"):
-        print_warning("Setup will continue without FFmpeg. Install it later for YouTube Whisper support.")
+    # Change to project root so all relative paths work
+    os.chdir(PROJECT_ROOT)
 
-    # Phase 2: Hardware
-    hw = detect_hardware()
-
-    # Phase 3: Model recommendations
-    models = recommend_models(hw)
-
-    # Phase 4: Environment configuration
-    generate_env_file(hw, models)
-
-    # Phase 5: Directory structure
-    create_directories()
-
-    # Phase 6: Migration
-    migrate_existing_data()
-
-    # Phase 7: SearXNG config
-    create_searxng_config()
-
-    # Phase 8: Service initialization
-    if not start_services(hw):
-        print_error("Service initialization failed")
+    # Step 1: Python & deps
+    if not step_python_deps(check_only):
+        fail("Cannot continue without Python dependencies")
         sys.exit(1)
 
-    # Phase 9: Model download
-    if not download_models(models, hw):
-        print_error("Model download failed")
+    # Step 2: Ollama
+    if not step_ollama(check_only):
+        fail("Cannot continue without Ollama")
         sys.exit(1)
 
-    # Phase 10: SearXNG & validation
-    if not start_searxng_and_validate(hw):
-        print_warning("Validation had warnings, but setup may still work")
+    # Step 3: Docker & FFmpeg
+    if not step_docker_and_ffmpeg(check_only):
+        fail("Cannot continue without Docker (needed for SearXNG)")
+        sys.exit(1)
 
-    # Success
-    print_header("Setup Complete!")
-    print("""
-=======================================================================
-                           SETUP COMPLETE!
-=======================================================================
+    # Step 4: Hardware (always runs — informational)
+    hw = step_hardware()
 
-Next steps:
+    # Step 5: Models
+    models = step_models(hw, check_only)
 
-1. Add a transcript to data/inbox/:
-   cp /path/to/transcript.txt data/inbox/
+    # Step 6: SearXNG
+    if not step_searxng(check_only):
+        warn("SearXNG setup had issues — search may not work")
+        if check_only:
+            sys.exit(1)
 
-2. Run the pipeline:
-   make run ARGS="--infile data/inbox/transcript.txt --channel YourChannel"
+    # Step 7: Config & directories
+    if not step_config(models, hw, check_only):
+        if check_only:
+            sys.exit(1)
 
-   Or with review mode:
-   make review ARGS="--infile data/inbox/transcript.txt"
+    # Step 8: Validate & smoke test
+    success = step_validate_and_test(models, check_only)
 
-3. Check outputs:
-   ls data/runs/
+    # ── Done ──────────────────────────────────────────────────────
+    print()
+    if success:
+        banner("SETUP COMPLETE")
+        print("""  Everything is working! Here's how to run:
 
-Useful commands:
-  make status   - Show service status
-  make logs     - View all logs
-  make stop     - Stop all services
-  make start    - Start all services
-  make models   - List downloaded models
-  make help     - Show all commands
+  From a YouTube URL:
+    python -m app.main --url "https://www.youtube.com/watch?v=VIDEO_ID"
 
-For more info, see:
-  - DOCKER.md     - Docker architecture and operations
-  - MIGRATION.md  - Migration guide for existing users
-  - README.md     - General project documentation
+  From a transcript file:
+    python -m app.main --infile inbox/transcript.txt --channel "ChannelName"
+
+  With interactive review:
+    python -m app.main --url "..." --review
+
+  Web UI:
+    python -m app.web.server
+    Then open http://localhost:8000
+
+  Manage services:
+    docker compose -f docker-compose.searxng.yml logs     # SearXNG logs
+    docker compose -f docker-compose.searxng.yml restart   # Restart SearXNG
+    docker compose -f docker-compose.searxng.yml down      # Stop SearXNG
+
+  Re-validate setup:
+    python setup.py --check
 """)
-
-    print_success("Setup wizard finished successfully!")
+    else:
+        banner("SETUP INCOMPLETE")
+        print("  Some steps had issues. Fix the problems above and re-run:")
+        print("    python setup.py")
+        print()
+        print("  Or validate without changes:")
+        print("    python setup.py --check")
+        print()
+        sys.exit(1)
 
 
 if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        print("\n\nSetup cancelled by user.")
+        print("\n\n  Setup cancelled.")
         sys.exit(1)
     except Exception as e:
-        print_error(f"Unexpected error: {e}")
+        fail(f"Unexpected error: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)
