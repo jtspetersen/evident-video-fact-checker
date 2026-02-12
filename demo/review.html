@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Evident — Andrew Wilson Discusses the Alex Pretti Shooting and Minneapolis ICE Protests</title>
+    <link rel="stylesheet" href="static/pico.min.css">
+    <style>
+        :root { --pico-font-family-sans-serif: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+        nav .brand { display: inline-flex; align-items: center; }
+        nav .brand img { height: 100px; width: 100px; object-fit: contain; }
+        .demo-tag { background: #ff8f00; color: #000; padding: 0.15em 0.45em; border-radius: 3px; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.05em; vertical-align: super; margin-left: -0.3rem; }
+        nav ul li a[role="button"] { padding: 0.4em 1em; font-size: 0.9rem; }
+        .badge { display: inline-block; padding: 0.15em 0.5em; border-radius: 4px; font-size: 0.85em; font-weight: 600; }
+        .badge-true { background: #2e7d32; color: #fff; }
+        .badge-likely-true { background: #558b2f; color: #fff; }
+        .badge-insufficient-evidence { background: #f9a825; color: #000; }
+        .badge-conflicting-evidence { background: #ff8f00; color: #000; }
+        .badge-likely-false { background: #e65100; color: #fff; }
+        .badge-false { background: #c62828; color: #fff; }
+        .badge-running { background: #1565c0; color: #fff; }
+        .badge-review { background: #6a1b9a; color: #fff; }
+        .badge-done { background: #2e7d32; color: #fff; }
+        .badge-error { background: #c62828; color: #fff; }
+        .badge-pending { background: #757575; color: #fff; }
+        .badge-cancelled { background: #757575; color: #fff; }
+        .stage-timeline { display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 1rem 0; }
+        .stage-box { padding: 0.4em 0.8em; border-radius: 6px; font-size: 0.8em; background: var(--pico-muted-border-color); color: var(--pico-muted-color); white-space: nowrap; }
+        .stage-box.active { background: #1565c0; color: #fff; animation: pulse 1.5s ease-in-out infinite; }
+        .stage-box.completed { background: #2e7d32; color: #fff; }
+        .stage-box.skipped { opacity: 0.5; text-decoration: line-through; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+        .log-stream { max-height: 400px; overflow-y: auto; background: var(--pico-code-background-color); padding: 0.75rem; border-radius: 6px; font-family: monospace; font-size: 0.8em; line-height: 1.6; }
+        .log-stream .log-line { border-bottom: 1px solid var(--pico-muted-border-color); padding: 2px 0; }
+        .drop-zone { border: 2px dashed var(--pico-muted-border-color); border-radius: 8px; padding: 2rem; text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s; }
+        .drop-zone:hover, .drop-zone.dragover { border-color: var(--pico-primary); background: var(--pico-primary-focus); }
+        .drop-zone input[type="file"] { display: none; }
+        .report-content h1 { font-size: 1.6rem; margin-top: 1.5rem; }
+        .report-content h2 { font-size: 1.3rem; margin-top: 1.3rem; }
+        .report-content h3 { font-size: 1.1rem; margin-top: 1rem; }
+        .report-content table { font-size: 0.9em; }
+        .report-content blockquote { border-left: 3px solid var(--pico-primary); padding-left: 1rem; font-style: italic; }
+        h1 { font-size: 1.5em; }
+        footer { margin-top: 2rem; text-align: center; font-size: 0.85em; }
+    </style>
+</head>
+<body>
+    <nav class="container-fluid">
+        <ul><li><a href="index.html" class="brand"><img src="images/Evident_logo.png" alt="Evident"></a> <span class="demo-tag">DEMO</span></li></ul>
+        <ul>
+            <li><a href="index.html" role="button">Start New</a></li>
+            <li><a href="runs.html" role="button" class="secondary">History</a></li>
+        </ul>
+    </nav>
+    <hr style="margin:0;">
+    <main class="container">
+        <hgroup>
+            <h1>Fact-Checking Video: Andrew Wilson Discusses the Alex Pretti Shooting and Minneapolis ICE Protests</h1>
+            <p>Channel: <strong>JRE Clips</strong> &mdash; Status: <span class="badge badge-review">review</span></p>
+        </hgroup>
+
+        <div class="stage-timeline">
+            <span class="stage-box completed">Prepare Transcript</span>
+            <span class="stage-box completed">Extract Claims</span>
+            <span class="stage-box active">Review Claims</span>
+            <span class="stage-box">Gather Evidence</span>
+            <span class="stage-box">Check Claims</span>
+            <span class="stage-box">Fact-Check Summary</span>
+        </div>
+
+        <h2 style="font-size:1.15em;">Review Extracted Claims</h2>
+        <p>23 claims extracted. Select claims you would like to verify.</p>
+
+        <form id="review-form">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Keep</th>
+                        <th>ID</th>
+                        <th>Type</th>
+                        <th>Claim</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><input type="checkbox" name="keep" value="C001" checked></td>
+                        <td><code>C001</code></td>
+                        <td><span class="badge" style="background:#546e7a;color:#fff;font-size:0.75em;">quote_attribution</span></td>
+                        <td>
+                            Cam Higgby has been on the front lines of the Crucible and has been a big supporter of the effort to cause chaos in Minneapolis
+                            <details style="margin-top:0.3rem;"><summary><small>Transcript quote</small></summary><small style="color:var(--pico-muted-color);">Cam Higgby by the way he was he's been on the front lines of this um The Crucible has been a big supporter of that effort.</small></details>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" name="keep" value="C002" checked></td>
+                        <td><code>C002</code></td>
+                        <td><span class="badge" style="background:#546e7a;color:#fff;font-size:0.75em;">event_date</span></td>
+                        <td>
+                            The protests in Minneapolis involved customs border patrol personnel rather than ICE, as they were brought in to manage the situation
+                            <details style="margin-top:0.3rem;"><summary><small>Transcript quote</small></summary><small style="color:var(--pico-muted-color);">it wasn't ICE. People need to understand that it was uh customs border patrol people. So they were brought in</small></details>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" name="keep" value="C003" checked></td>
+                        <td><code>C003</code></td>
+                        <td><span class="badge" style="background:#546e7a;color:#fff;font-size:0.75em;">causal</span></td>
+                        <td>
+                            The incident involving the shooting was not caused by ICE but by Customs and Border Patrol (CBP) officers
+                            <details style="margin-top:0.3rem;"><summary><small>Transcript quote</small></summary><small style="color:var(--pico-muted-color);">it wasn't ICE. People need to understand that it was uh customs border patrol people.</small></details>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" name="keep" value="C004" checked></td>
+                        <td><code>C004</code></td>
+                        <td><span class="badge" style="background:#546e7a;color:#fff;font-size:0.75em;">policy_legal</span></td>
+                        <td>
+                            Customs and Border Patrol (CBP) was brought in to assist Immigration and Customs Enforcement (ICE) during the protests
+                            <details style="margin-top:0.3rem;"><summary><small>Transcript quote</small></summary><small style="color:var(--pico-muted-color);">they were brought in to assist ICE</small></details>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" name="keep" value="C005" checked></td>
+                        <td><code>C005</code></td>
+                        <td><span class="badge" style="background:#546e7a;color:#fff;font-size:0.75em;">policy_legal</span></td>
+                        <td>
+                            Concealed carry holders are trained not to physically engage with individuals and must carry their licenses and ID at all times
+                            <details style="margin-top:0.3rem;"><summary><small>Transcript quote</small></summary><small style="color:var(--pico-muted-color);">you do not ever physically engage with someone. You also are supposed to carry your license on you and you're supposed to uh you're supposed to have ID on you</small></details>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" name="keep" value="C006" checked></td>
+                        <td><code>C006</code></td>
+                        <td><span class="badge" style="background:#546e7a;color:#fff;font-size:0.75em;">biography</span></td>
+                        <td>
+                            Speaker 1 has been a Certified Personal Protection Instructor (CPL) for years
+                            <details style="margin-top:0.3rem;"><summary><small>Transcript quote</small></summary><small style="color:var(--pico-muted-color);">I was a CPL instructor for years</small></details>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" name="keep" value="C007" checked></td>
+                        <td><code>C007</code></td>
+                        <td><span class="badge" style="background:#546e7a;color:#fff;font-size:0.75em;">event_date</span></td>
+                        <td>
+                            During an ICE raid on a Home Depot in California, individuals smashed police cars and started fires, but no fatalities occurred
+                            <details style="margin-top:0.3rem;"><summary><small>Transcript quote</small></summary><small style="color:var(--pico-muted-color);">Nobody died in California. There was an ICE raid on a Home Depot and they went nuts and they started smashing police cars. They were starting fires.</small></details>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" name="keep" value="C008" checked></td>
+                        <td><code>C008</code></td>
+                        <td><span class="badge" style="background:#546e7a;color:#fff;font-size:0.75em;">biography</span></td>
+                        <td>
+                            In California, individuals frequently gathered in front of Home Depots, often as day laborers, during ICE raids
+                            <details style="margin-top:0.3rem;"><summary><small>Transcript quote</small></summary><small style="color:var(--pico-muted-color);">you'd drive down the street and they would all hang out in front of the Home Depot and you'd say two, right?</small></details>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" name="keep" value="C009" checked></td>
+                        <td><code>C009</code></td>
+                        <td><span class="badge" style="background:#546e7a;color:#fff;font-size:0.75em;">event_date</span></td>
+                        <td>
+                            During the California ICE raid, individuals broke into a store (Amco or 7-Eleven), and law enforcement did not intervene
+                            <details style="margin-top:0.3rem;"><summary><small>Transcript quote</small></summary><small style="color:var(--pico-muted-color);">who were breaking into I don't remember if it was an Amco or a 7-Eleven, but they were busting into it. The cops were were on the side corner watching this go down and do anything. They didn't do</small></details>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" name="keep" value="C010" checked></td>
+                        <td><code>C010</code></td>
+                        <td><span class="badge" style="background:#546e7a;color:#fff;font-size:0.75em;">causal</span></td>
+                        <td>
+                            A mathematical formula suggests that if local police fail to protect federal buildings, federal agencies like ICE and FBI will assume responsibility for protection
+                            <details style="margin-top:0.3rem;"><summary><small>Transcript quote</small></summary><small style="color:var(--pico-muted-color);">The if the local police are not going to protect the federal buildings, then it's left to the federal police to do this, right? In this case, ICE is going to</small></details>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" name="keep" value="C011" checked></td>
+                        <td><code>C011</code></td>
+                        <td><span class="badge" style="background:#546e7a;color:#fff;font-size:0.75em;">policy_legal</span></td>
+                        <td>
+                            Trump's actions involved unleashing the National Guard to address situations where local police are unable to protect federal assets
+                            <details style="margin-top:0.3rem;"><summary><small>Transcript quote</small></summary><small style="color:var(--pico-muted-color);">and this is why Trump, he unleashes the National</small></details>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" name="keep" value="C012" checked></td>
+                        <td><code>C012</code></td>
+                        <td><span class="badge" style="background:#546e7a;color:#fff;font-size:0.75em;">policy_legal</span></td>
+                        <td>
+                            The speaker claims that if local police are not protecting federal buildings, federal agencies like ICE and FBI will take responsibility for protection, following a mathematical formula
+                            <details style="margin-top:0.3rem;"><summary><small>Transcript quote</small></summary><small style="color:var(--pico-muted-color);">If the local police are not going to protect the federal buildings, then it's left to the federal police to do this, right? In this case, ICE is going to protect its own buildings. The FBI is going to protect its own buildings.</small></details>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" name="keep" value="C013" checked></td>
+                        <td><code>C013</code></td>
+                        <td><span class="badge" style="background:#546e7a;color:#fff;font-size:0.75em;">policy_legal</span></td>
+                        <td>
+                            The speaker asserts that Trump's deployment of the National Guard is specifically to protect federal buildings, with each deployment targeting two federal buildings
+                            <details style="margin-top:0.3rem;"><summary><small>Transcript quote</small></summary><small style="color:var(--pico-muted-color);">That's And basically anytime he's unleashed a National Guard that I've seen, it's two federal buildings to protect them.</small></details>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" name="keep" value="C014" checked></td>
+                        <td><code>C014</code></td>
+                        <td><span class="badge" style="background:#546e7a;color:#fff;font-size:0.75em;">causal</span></td>
+                        <td>
+                            The speaker states that the longer protesters engage with federal officers, the higher the probability of an incident occurring due to increased attrition and engagements
+                            <details style="margin-top:0.3rem;"><summary><small>Transcript quote</small></summary><small style="color:var(--pico-muted-color);">The longer it is that protesters are engaging with federal officers whose job is not to do basic street cleanup of thugs, that's the local PD's job. Uh, the chances that there's an incident, which is going to be a bad incident, is going to occur.</small></details>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" name="keep" value="C015" checked></td>
+                        <td><code>C015</code></td>
+                        <td><span class="badge" style="background:#546e7a;color:#fff;font-size:0.75em;">event_date</span></td>
+                        <td>
+                            The speaker claims that Antifa groups are consistently present in front of ICE buildings, night after night, as part of a calculated strategy to provoke incidents
+                            <details style="margin-top:0.3rem;"><summary><small>Transcript quote</small></summary><small style="color:var(--pico-muted-color);">the Antifa people are still out in front of the ICE buildings in front of many states night after night after night. And it's designed specifically to make sure it's just ma a math formula, right?</small></details>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" name="keep" value="C016" checked></td>
+                        <td><code>C016</code></td>
+                        <td><span class="badge" style="background:#546e7a;color:#fff;font-size:0.75em;">causal</span></td>
+                        <td>
+                            The speaker argues that prolonged protests with minimal local police involvement increase the likelihood of incidents between federal officers and protesters
+                            <details style="margin-top:0.3rem;"><summary><small>Transcript quote</small></summary><small style="color:var(--pico-muted-color);">The longer we're here and the less the local PD involves itself, the more chance of incident between federal officers and us.</small></details>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" name="keep" value="C017" checked></td>
+                        <td><code>C017</code></td>
+                        <td><span class="badge" style="background:#546e7a;color:#fff;font-size:0.75em;">causal</span></td>
+                        <td>
+                            Reduced involvement of local police departments increases the likelihood of incidents between federal officers and protesters
+                            <details style="margin-top:0.3rem;"><summary><small>Transcript quote</small></summary><small style="color:var(--pico-muted-color);">The longer we're here and the less the local PD involves itself, the more chance of incident between federal officers and us</small></details>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" name="keep" value="C018" checked></td>
+                        <td><code>C018</code></td>
+                        <td><span class="badge" style="background:#546e7a;color:#fff;font-size:0.75em;">statistic</span></td>
+                        <td>
+                            A protester at a supposed peaceful demonstration was fully armed with two magazines, raising concerns about the situation
+                            <details style="margin-top:0.3rem;"><summary><small>Transcript quote</small></summary><small style="color:var(--pico-muted-color);">when you go to what's supposed to be a peaceful protest and you're fully armed like that with two magazines, it's kind of crazy, right?</small></details>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" name="keep" value="C019" checked></td>
+                        <td><code>C019</code></td>
+                        <td><span class="badge" style="background:#546e7a;color:#fff;font-size:0.75em;">policy_legal</span></td>
+                        <td>
+                            A group referred to as 'the liver' is described as being pro-second amendment, though the term may be a typo or misnomer
+                            <details style="margin-top:0.3rem;"><summary><small>Transcript quote</small></summary><small style="color:var(--pico-muted-color);">Now the liver are all pro second amendment, too</small></details>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" name="keep" value="C020" checked></td>
+                        <td><code>C020</code></td>
+                        <td><span class="badge" style="background:#546e7a;color:#fff;font-size:0.75em;">other</span></td>
+                        <td>
+                            MSNBC is alleged to have altered the image of an individual to make them appear more sympathetic after being shot
+                            <details style="margin-top:0.3rem;"><summary><small>Transcript quote</small></summary><small style="color:var(--pico-muted-color);">did you see what MSNBC did to his image?</small></details>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" name="keep" value="C021" checked></td>
+                        <td><code>C021</code></td>
+                        <td><span class="badge" style="background:#546e7a;color:#fff;font-size:0.75em;">other</span></td>
+                        <td>
+                            CNN is claimed to have portrayed the speaker as green and dying during the COVID pandemic, while making another individual appear handsome
+                            <details style="margin-top:0.3rem;"><summary><small>Transcript quote</small></summary><small style="color:var(--pico-muted-color);">CNN during the COVID times turned me green and they made me ugly and look like I was dying and they made him handsome</small></details>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" name="keep" value="C022" checked></td>
+                        <td><code>C022</code></td>
+                        <td><span class="badge" style="background:#546e7a;color:#fff;font-size:0.75em;">other</span></td>
+                        <td>
+                            Speaker 1 claims that the nose of the subject was shrunk slightly during the transformation
+                            <details style="margin-top:0.3rem;"><summary><small>Transcript quote</small></summary><small style="color:var(--pico-muted-color);">They shrunk his nose a little, too, didn't they? They did. They shrunk his nose.</small></details>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" name="keep" value="C023" checked></td>
+                        <td><code>C023</code></td>
+                        <td><span class="badge" style="background:#546e7a;color:#fff;font-size:0.75em;">other</span></td>
+                        <td>
+                            Speaker 2 states that the shoulders of the subject were plumped up during the transformation
+                            <details style="margin-top:0.3rem;"><summary><small>Transcript quote</small></summary><small style="color:var(--pico-muted-color);">And they made him, if you look at the shoulders, it even looks like they uh they may have plumped up the shoulders there a bit.</small></details>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div style="display:flex;gap:1rem;margin-top:1rem;">
+                <button type="submit" id="submit-btn">Submit Review &amp; Continue</button>
+                <button type="button" id="keep-all-btn" class="outline">Keep All</button>
+            </div>
+        </form>
+    </main>
+    <footer class="container"><small>Evident Video Fact Checker &mdash; Demo</small></footer>
+    <script>
+        document.getElementById('keep-all-btn').addEventListener('click', function () {
+            document.querySelectorAll('#review-form input[type="checkbox"]').forEach(function (cb) {
+                cb.checked = true;
+            });
+        });
+
+        document.getElementById('review-form').addEventListener('submit', function (e) {
+            e.preventDefault();
+            var btn = document.getElementById('submit-btn');
+            btn.setAttribute('aria-busy', 'true');
+            btn.textContent = 'Submitting\u2026';
+            btn.disabled = true;
+            setTimeout(function () {
+                window.location.href = 'progress.html?after=review';
+            }, 500);
+        });
+    </script>
+</body>
+</html>

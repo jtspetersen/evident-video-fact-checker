@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Evident — Andrew Wilson Discusses the Alex Pretti Shooting and Minneapolis ICE Protests</title>
+    <link rel="stylesheet" href="static/pico.min.css">
+    <style>
+        /* Base CSS */
+        :root { --pico-font-family-sans-serif: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+        nav .brand { display: inline-flex; align-items: center; }
+        nav .brand img { height: 100px; width: 100px; object-fit: contain; }
+        .demo-tag { background: #ff8f00; color: #000; padding: 0.15em 0.45em; border-radius: 3px; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.05em; vertical-align: super; margin-left: -0.3rem; }
+        nav ul li a[role="button"] { padding: 0.4em 1em; font-size: 0.9rem; }
+        .badge { display: inline-block; padding: 0.15em 0.5em; border-radius: 4px; font-size: 0.85em; font-weight: 600; }
+        .badge-true { background: #2e7d32; color: #fff; }
+        .badge-likely-true { background: #558b2f; color: #fff; }
+        .badge-insufficient-evidence { background: #f9a825; color: #000; }
+        .badge-conflicting-evidence { background: #ff8f00; color: #000; }
+        .badge-likely-false { background: #e65100; color: #fff; }
+        .badge-false { background: #c62828; color: #fff; }
+        .badge-running { background: #1565c0; color: #fff; }
+        .badge-review { background: #6a1b9a; color: #fff; }
+        .badge-done { background: #2e7d32; color: #fff; }
+        .badge-error { background: #c62828; color: #fff; }
+        .badge-pending { background: #757575; color: #fff; }
+        .badge-cancelled { background: #757575; color: #fff; }
+        .stage-timeline { display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 1rem 0; }
+        .stage-box { padding: 0.4em 0.8em; border-radius: 6px; font-size: 0.8em; background: var(--pico-muted-border-color); color: var(--pico-muted-color); white-space: nowrap; }
+        .stage-box.active { background: #1565c0; color: #fff; animation: pulse 1.5s ease-in-out infinite; }
+        .stage-box.completed { background: #2e7d32; color: #fff; }
+        .stage-box.skipped { opacity: 0.5; text-decoration: line-through; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+        .log-stream { max-height: 400px; overflow-y: auto; background: var(--pico-code-background-color); padding: 0.75rem; border-radius: 6px; font-family: monospace; font-size: 0.8em; line-height: 1.6; }
+        .log-stream .log-line { border-bottom: 1px solid var(--pico-muted-border-color); padding: 2px 0; }
+        .drop-zone { border: 2px dashed var(--pico-muted-border-color); border-radius: 8px; padding: 2rem; text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s; }
+        .drop-zone:hover, .drop-zone.dragover { border-color: var(--pico-primary); background: var(--pico-primary-focus); }
+        .drop-zone input[type="file"] { display: none; }
+        .report-content h1 { font-size: 1.6rem; margin-top: 1.5rem; }
+        .report-content h2 { font-size: 1.3rem; margin-top: 1.3rem; }
+        .report-content h3 { font-size: 1.1rem; margin-top: 1rem; }
+        .report-content table { font-size: 0.9em; }
+        .report-content blockquote { border-left: 3px solid var(--pico-primary); padding-left: 1rem; font-style: italic; }
+        h1 { font-size: 1.5em; }
+        footer { margin-top: 2rem; text-align: center; font-size: 0.85em; }
+
+        /* Stage detail panels */
+        .stage-detail {
+            display: none;
+            margin: 0.75rem 0;
+            padding: 0.75rem 1rem;
+            border-radius: 6px;
+            background: var(--pico-card-background-color);
+            border: 1px solid var(--pico-muted-border-color);
+        }
+        .stage-detail.visible { display: block; }
+        .stage-detail h4 {
+            margin: 0 0 0.5rem 0;
+            font-size: 0.95em;
+        }
+        .stage-detail .detail-message {
+            font-size: 0.85em;
+            color: var(--pico-muted-color);
+            margin-bottom: 0.4rem;
+        }
+        .stage-detail progress {
+            width: 100%;
+            height: 1.2rem;
+        }
+        .stage-detail .detail-stats {
+            display: flex;
+            gap: 1.5rem;
+            margin-top: 0.4rem;
+            font-size: 0.85em;
+        }
+        .stage-detail .detail-stats strong {
+            font-size: 1.1em;
+        }
+    </style>
+</head>
+<body>
+    <nav class="container-fluid">
+        <ul><li><a href="index.html" class="brand"><img src="images/Evident_logo.png" alt="Evident"></a> <span class="demo-tag">DEMO</span></li></ul>
+        <ul>
+            <li><a href="index.html" role="button">Start New</a></li>
+            <li><a href="runs.html" role="button" class="secondary">History</a></li>
+        </ul>
+    </nav>
+    <hr style="margin:0;">
+
+    <main class="container">
+        <!-- Header -->
+        <hgroup>
+            <h1 id="run-title">Fact-Checking Video: Andrew Wilson Discusses the Alex Pretti Shooting and Minneapolis ICE Protests</h1>
+            <p>
+                Channel: <strong id="run-channel">JRE Clips</strong>
+                &mdash;
+                Status: <span id="status-badge" class="badge badge-running">running</span>
+            </p>
+        </hgroup>
+
+        <!-- Stage timeline -->
+        <h3>Pipeline Stages</h3>
+        <div class="stage-timeline" id="stage-timeline">
+            <div class="stage-box" id="stage-prepare_transcript" data-stage="prepare_transcript">Prepare Transcript</div>
+            <div class="stage-box" id="stage-extract_claims" data-stage="extract_claims">Extract Claims</div>
+            <div class="stage-box" id="stage-review_claims" data-stage="review_claims">Review Claims</div>
+            <div class="stage-box" id="stage-gather_evidence" data-stage="gather_evidence">Gather Evidence</div>
+            <div class="stage-box" id="stage-check_claims" data-stage="check_claims">Check Claims</div>
+            <div class="stage-box" id="stage-fact_check_summary" data-stage="fact_check_summary">Fact-Check Summary</div>
+        </div>
+
+        <!-- Prepare transcript detail panel -->
+        <div class="stage-detail" id="prepare-detail">
+            <h4>Preparing Transcript</h4>
+            <div class="detail-message" id="prepare-message">Preparing...</div>
+            <div class="detail-stats">
+                <div>Source: <strong id="prepare-source">pending</strong></div>
+            </div>
+        </div>
+
+        <!-- Extract claims detail panel -->
+        <div class="stage-detail" id="extract-detail">
+            <h4>Extracting Claims</h4>
+            <div class="detail-message" id="extract-message">Preparing...</div>
+            <progress id="extract-bar" value="0" max="1"></progress>
+            <div class="detail-stats">
+                <div>Chunk <strong id="extract-chunk">0</strong> / <span id="extract-total">1</span></div>
+                <div>Claims found: <strong id="extract-claims">0</strong></div>
+            </div>
+            <!-- Consolidation sub-stats -->
+            <div id="consolidate-stats" style="display:none; margin-top:0.5rem; padding-top:0.5rem; border-top:1px solid var(--pico-muted-border-color);">
+                <div class="detail-message" id="consolidate-message">Analyzing claims for duplicates and narrative groups...</div>
+                <div class="detail-stats">
+                    <div>Duplicates removed: <strong id="consolidate-dupes">0</strong></div>
+                    <div>Narrative groups: <strong id="consolidate-groups">0</strong></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gather evidence detail panel -->
+        <div class="stage-detail" id="retrieve-detail">
+            <h4>Gathering Evidence</h4>
+            <div class="detail-message" id="retrieve-message">Preparing...</div>
+            <progress id="retrieve-bar" value="0" max="1"></progress>
+            <div class="detail-stats">
+                <div>Claim <strong id="retrieve-claim-idx">0</strong> / <span id="retrieve-total">0</span></div>
+                <div>Sources: <strong id="retrieve-sources">0</strong></div>
+                <div>Snippets: <strong id="retrieve-snippets">0</strong></div>
+                <div>Failures: <strong id="retrieve-failures">0</strong></div>
+            </div>
+        </div>
+
+        <!-- Check claims detail panel -->
+        <div class="stage-detail" id="verify-detail">
+            <h4>Checking Claims</h4>
+            <div class="detail-message" id="verify-message">Preparing...</div>
+            <progress id="verify-bar" value="0" max="1"></progress>
+            <div class="detail-stats">
+                <div>Checked <strong id="verify-current">0</strong> / <span id="verify-total">0</span></div>
+            </div>
+        </div>
+
+        <!-- Counter grid -->
+        <div class="grid" id="counters" style="margin:1rem 0;">
+            <div>
+                <strong id="cnt-claims">0</strong>
+                <small>Claims</small>
+            </div>
+            <div>
+                <strong id="cnt-sources">0</strong>
+                <small>Sources</small>
+            </div>
+            <div>
+                <strong id="cnt-snippets">0</strong>
+                <small>Snippets</small>
+            </div>
+            <div>
+                <strong id="cnt-verdicts">0</strong>
+                <small>Verdicts</small>
+            </div>
+            <div>
+                <strong id="cnt-failures">0</strong>
+                <small>Failures</small>
+            </div>
+            <div>
+                <strong id="cnt-groups">0</strong>
+                <small>Groups</small>
+            </div>
+        </div>
+
+        <!-- Next Step button -->
+        <div style="margin: 1rem 0;" id="action-container">
+            <button type="button" id="next-btn" class="primary">Begin Fact-Check</button>
+        </div>
+
+        <!-- Log stream -->
+        <h3>Log</h3>
+        <div class="log-stream" id="log-stream">
+            <div class="log-line">Click 'Begin Fact-Check' to start the demo...</div>
+        </div>
+    </main>
+
+    <footer class="container"><small>Evident Video Fact Checker &mdash; Demo</small></footer>
+    <script src="static/progress.js"></script>
+</body>
+</html>

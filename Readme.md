@@ -236,6 +236,25 @@ evident-video-fact-checker/
 └── Makefile                   Make shortcuts
 ```
 
+## Live Demo
+
+Try the app without any setup — a static clickable demo walks through the full pipeline using real data from past fact-check runs.
+
+**[Launch Demo](demo/index.html)**
+
+The demo includes:
+- **Landing page** with pre-filled YouTube URL and file upload modes
+- **Click-through pipeline** — step through all 6 stages with animated counters, progress bars, and a live log stream
+- **Claim review** — browse 23 extracted claims with type badges and transcript quotes
+- **Full reports** for 3 real runs (JRE Clips, Tim Pool, Brian Tyler Cohen) with verdicts, citations, and narrative group analysis
+- **Run history** — browse past fact-check results with verdict summaries
+
+No server, no dependencies — just open `demo/index.html` in a browser, or serve it:
+
+```bash
+python -m http.server 9000 -d demo
+```
+
 ## Documentation
 
 - [DOCKER.md](DOCKER.md) — Full Docker deployment (advanced)

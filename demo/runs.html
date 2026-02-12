@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Evident — Video Fact-check History</title>
+    <link rel="stylesheet" href="static/pico.min.css">
+    <style>
+        /* Custom overrides */
+        :root {
+            --pico-font-family-sans-serif: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        }
+        nav .brand {
+            display: inline-flex;
+            align-items: center;
+        }
+        nav .brand img {
+            height: 100px;
+            width: 100px;
+            object-fit: contain;
+        }
+        .demo-tag {
+            background: #ff8f00;
+            color: #000;
+            padding: 0.15em 0.45em;
+            border-radius: 3px;
+            font-size: 0.65rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            vertical-align: super;
+            margin-left: -0.3rem;
+        }
+        nav ul li a[role="button"] {
+            padding: 0.4em 1em;
+            font-size: 0.9rem;
+        }
+        .badge {
+            display: inline-block;
+            padding: 0.15em 0.5em;
+            border-radius: 4px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+        .badge-true { background: #2e7d32; color: #fff; }
+        .badge-likely-true { background: #558b2f; color: #fff; }
+        .badge-insufficient-evidence { background: #f9a825; color: #000; }
+        .badge-conflicting-evidence { background: #ff8f00; color: #000; }
+        .badge-likely-false { background: #e65100; color: #fff; }
+        .badge-false { background: #c62828; color: #fff; }
+        .badge-running { background: #1565c0; color: #fff; }
+        .badge-review { background: #6a1b9a; color: #fff; }
+        .badge-done { background: #2e7d32; color: #fff; }
+        .badge-error { background: #c62828; color: #fff; }
+        .badge-pending { background: #757575; color: #fff; }
+        .badge-cancelled { background: #757575; color: #fff; }
+
+        /* Stage timeline */
+        .stage-timeline {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin: 1rem 0;
+        }
+        .stage-box {
+            padding: 0.4em 0.8em;
+            border-radius: 6px;
+            font-size: 0.8em;
+            background: var(--pico-muted-border-color);
+            color: var(--pico-muted-color);
+            white-space: nowrap;
+        }
+        .stage-box.active {
+            background: #1565c0;
+            color: #fff;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        .stage-box.completed {
+            background: #2e7d32;
+            color: #fff;
+        }
+        .stage-box.skipped {
+            opacity: 0.5;
+            text-decoration: line-through;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        /* Log stream */
+        .log-stream {
+            max-height: 400px;
+            overflow-y: auto;
+            background: var(--pico-code-background-color);
+            padding: 0.75rem;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 0.8em;
+            line-height: 1.6;
+        }
+        .log-stream .log-line {
+            border-bottom: 1px solid var(--pico-muted-border-color);
+            padding: 2px 0;
+        }
+
+        /* Drop zone */
+        .drop-zone {
+            border: 2px dashed var(--pico-muted-border-color);
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+        }
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: var(--pico-primary);
+            background: var(--pico-primary-focus);
+        }
+        .drop-zone input[type="file"] {
+            display: none;
+        }
+
+        /* Report content */
+        .report-content h1 { font-size: 1.6rem; margin-top: 1.5rem; }
+        .report-content h2 { font-size: 1.3rem; margin-top: 1.3rem; }
+        .report-content h3 { font-size: 1.1rem; margin-top: 1rem; }
+        .report-content table { font-size: 0.9em; }
+        .report-content blockquote {
+            border-left: 3px solid var(--pico-primary);
+            padding-left: 1rem;
+            font-style: italic;
+        }
+
+        h1 { font-size: 1.5em; }
+        footer { margin-top: 2rem; text-align: center; font-size: 0.85em; }
+
+        /* Highlighted row for the demo-available run */
+        tr.demo-highlight {
+            background: rgba(21, 101, 192, 0.06);
+        }
+    </style>
+</head>
+<body>
+    <nav class="container-fluid">
+        <ul>
+            <li><a href="index.html" class="brand"><img src="images/Evident_logo.png" alt="Evident"></a> <span class="demo-tag">DEMO</span></li>
+        </ul>
+        <ul>
+            <li><a href="index.html" role="button">Start New</a></li>
+            <li><a href="runs.html" role="button" class="secondary">History</a></li>
+        </ul>
+    </nav>
+    <hr style="margin:0;">
+
+    <main class="container">
+        <hgroup>
+            <h1>Video Fact-check History</h1>
+            <p>3 runs recorded.</p>
+        </hgroup>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>ID</th>
+                    <th>Video Title</th>
+                    <th>Channel</th>
+                    <th>Verdicts</th>
+                    <th>Duration</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Run 1: 20260207_142113 — JRE Clips (highlighted, links to report) -->
+                <tr class="demo-highlight">
+                    <td><small>2026-02-07</small></td>
+                    <td><code>20260207_142113</code></td>
+                    <td>Andrew Wilson Discusses the Alex Pretti Shooting and Minneapolis ICE Protests</td>
+                    <td>JRE Clips</td>
+                    <td>
+                        <span class="badge badge-true" style="font-size:0.7em; margin-right:2px;">3 TRUE</span>
+                        <span class="badge badge-insufficient-evidence" style="font-size:0.7em; margin-right:2px;">12 INSUFFICIENT EVIDENCE</span>
+                        <span class="badge badge-false" style="font-size:0.7em; margin-right:2px;">8 FALSE</span>
+                    </td>
+                    <td><small>20m 48s</small></td>
+                    <td>
+                        <a href="report.html" role="button" class="outline" style="padding:0.3em 0.6em; font-size:0.8em;">
+                            View
+                        </a>
+                    </td>
+                </tr>
+
+                <!-- Run 2: 20260210_234453 — Tim Pool -->
+                <tr>
+                    <td><small>2026-02-11</small></td>
+                    <td><code>20260210_234453</code></td>
+                    <td>This Is Planned</td>
+                    <td>Tim Pool</td>
+                    <td>
+                        <span class="badge badge-insufficient-evidence" style="font-size:0.7em; margin-right:2px;">18 INSUFFICIENT EVIDENCE</span>
+                        <span class="badge badge-false" style="font-size:0.7em; margin-right:2px;">5 FALSE</span>
+                    </td>
+                    <td><small>26m 46s</small></td>
+                    <td>
+                        <a href="report-timpool.html" role="button" class="outline" style="padding:0.3em 0.6em; font-size:0.8em;">
+                            View
+                        </a>
+                    </td>
+                </tr>
+
+                <!-- Run 3: 20260207_134923 — Brian Tyler Cohen -->
+                <tr>
+                    <td><small>2026-02-07</small></td>
+                    <td><code>20260207_134923</code></td>
+                    <td>JD Vance Mercilessly Booed at Olympic Opening Ceremony</td>
+                    <td>Brian Tyler Cohen</td>
+                    <td>
+                        <span class="badge badge-true" style="font-size:0.7em; margin-right:2px;">2 TRUE</span>
+                        <span class="badge badge-insufficient-evidence" style="font-size:0.7em; margin-right:2px;">2 INSUFFICIENT EVIDENCE</span>
+                        <span class="badge badge-likely-false" style="font-size:0.7em; margin-right:2px;">1 LIKELY FALSE</span>
+                    </td>
+                    <td><small>7m 18s</small></td>
+                    <td>
+                        <a href="report-btc.html" role="button" class="outline" style="padding:0.3em 0.6em; font-size:0.8em;">
+                            View
+                        </a>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </main>
+
+    <footer class="container">
+        <small>Evident Video Fact Checker &mdash; Demo</small>
+    </footer>
+</body>
+</html>

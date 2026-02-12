@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Evident — Video Fact-check Report</title>
+    <link rel="stylesheet" href="static/pico.min.css">
+    <style>
+        :root { --pico-font-family-sans-serif: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+        nav .brand { display: inline-flex; align-items: center; }
+        nav .brand img { height: 100px; width: 100px; object-fit: contain; }
+        .demo-tag { background: #ff8f00; color: #000; padding: 0.15em 0.45em; border-radius: 3px; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.05em; vertical-align: super; margin-left: -0.3rem; }
+        nav ul li a[role="button"] { padding: 0.4em 1em; font-size: 0.9rem; }
+        .badge { display: inline-block; padding: 0.15em 0.5em; border-radius: 4px; font-size: 0.85em; font-weight: 600; }
+        .badge-true { background: #2e7d32; color: #fff; }
+        .badge-likely-true { background: #558b2f; color: #fff; }
+        .badge-insufficient-evidence { background: #f9a825; color: #000; }
+        .badge-conflicting-evidence { background: #ff8f00; color: #000; }
+        .badge-likely-false { background: #e65100; color: #fff; }
+        .badge-false { background: #c62828; color: #fff; }
+        .badge-running { background: #1565c0; color: #fff; }
+        .badge-review { background: #6a1b9a; color: #fff; }
+        .badge-done { background: #2e7d32; color: #fff; }
+        .badge-error { background: #c62828; color: #fff; }
+        .badge-pending { background: #757575; color: #fff; }
+        .badge-cancelled { background: #757575; color: #fff; }
+        .stage-timeline { display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 1rem 0; }
+        .stage-box { padding: 0.4em 0.8em; border-radius: 6px; font-size: 0.8em; background: var(--pico-muted-border-color); color: var(--pico-muted-color); white-space: nowrap; }
+        .stage-box.active { background: #1565c0; color: #fff; animation: pulse 1.5s ease-in-out infinite; }
+        .stage-box.completed { background: #2e7d32; color: #fff; }
+        .stage-box.skipped { opacity: 0.5; text-decoration: line-through; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+        .log-stream { max-height: 400px; overflow-y: auto; background: var(--pico-code-background-color); padding: 0.75rem; border-radius: 6px; font-family: monospace; font-size: 0.8em; line-height: 1.6; }
+        .log-stream .log-line { border-bottom: 1px solid var(--pico-muted-border-color); padding: 2px 0; }
+        .drop-zone { border: 2px dashed var(--pico-muted-border-color); border-radius: 8px; padding: 2rem; text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s; }
+        .drop-zone:hover, .drop-zone.dragover { border-color: var(--pico-primary); background: var(--pico-primary-focus); }
+        .drop-zone input[type="file"] { display: none; }
+        .report-content h1 { font-size: 1.6rem; margin-top: 1.5rem; }
+        .report-content h2 { font-size: 1.3rem; margin-top: 1.3rem; }
+        .report-content h3 { font-size: 1.1rem; margin-top: 1rem; }
+        .report-content table { font-size: 0.9em; }
+        .report-content blockquote { border-left: 3px solid var(--pico-primary); padding-left: 1rem; font-style: italic; }
+        h1 { font-size: 1.5em; }
+        footer { margin-top: 2rem; text-align: center; font-size: 0.85em; }
+    </style>
+</head>
+<body>
+    <nav class="container-fluid">
+        <ul><li><a href="index.html" class="brand"><img src="images/Evident_logo.png" alt="Evident"></a> <span class="demo-tag">DEMO</span></li></ul>
+        <ul>
+            <li><a href="index.html" role="button">Start New</a></li>
+            <li><a href="runs.html" role="button" class="secondary">History</a></li>
+        </ul>
+    </nav>
+    <hr style="margin:0;">
+    <main class="container">
+        <hgroup>
+            <h1>Video Fact-check Report</h1>
+        </hgroup>
+
+        <article class="report-content">
+            <p>
+                <strong>Video Title:</strong> Andrew Wilson Discusses the Alex Pretti Shooting and Minneapolis ICE Protests<br>
+                <strong>Channel:</strong> JRE Clips<br>
+                <strong>ID:</strong> <code>20260207_142113</code><br>
+                <strong>Date:</strong> 2026-02-07
+            </p>
+
+<h2>Executive Overview</h2>
+<p>23 claims analyzed | 2 narrative clusters detected</p>
+<table>
+<thead>
+<tr>
+<th>Rating</th>
+<th>Count</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>TRUE</td>
+<td>3</td>
+</tr>
+<tr>
+<td>LIKELY TRUE</td>
+<td>0</td>
+</tr>
+<tr>
+<td>INSUFFICIENT EVIDENCE</td>
+<td>12</td>
+</tr>
+<tr>
+<td>CONFLICTING EVIDENCE</td>
+<td>0</td>
+</tr>
+<tr>
+<td>LIKELY FALSE</td>
+<td>0</td>
+</tr>
+<tr>
+<td>FALSE</td>
+<td>8</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Key concern areas:</strong> anonymous_or_uncited (7), insufficient_evidence_for_claim_type (4), insufficient_evidence (2)
+<strong>Source quality:</strong> 27 sources across tiers 3, 5, 6. 0% from tiers 1-3.</p>
+<p>Across the 23 claims fact-checked, the most common verdicts were insufficient evidence and false. A significant finding is the misattribution of actions and identities—for example, attributing actions to Cam Higgby that occurred with Nick Sortor, or incorrectly stating there were no fatalities in the Home Depot raid. This pattern of inaccuracies means viewers should be cautious about accepting details presented as established fact, as the evidence frequently indicates missing context, misidentified individuals, or outright contradictions.</p>
+<hr />
+<h2>Key Findings</h2>
+<p><strong>FALSE (high severity):</strong>
+- <strong>C001</strong> — The claim misattributes Nick Sortor's experience to Cam Higgby. News articles confirm Sortor was surrounded by anti-ICE protesters, not a supporter of...
+- <strong>C015</strong> — The claim states Antifa groups are 'consistently present... night after night,' but evidence shows protests are 'largely confined to one city block' a...
+- <strong>G001</strong> — Narrative group The speaker argues that prolonged protests with minimal local police involvement: The narrative assembles three claims about causal relationships between protest duration, local police involvement, and federal incidents. However, th...
+- <strong>G002</strong> — Narrative group The speaker constructs a framework where federal agencies assume protection duti: The narrative thesis falsely claims a mathematical formula justifies National Guard deployments. Evidence shows no such formula exists (C010 and C012 ...</p>
+<p><strong>Rhetorical issue in "C006":</strong> Misuse of acronym 'CPL' instead of the verified 'DOJ Certified Instructor'
+<strong>Rhetorical issue in "C007":</strong> missing_context
+<strong>Recurring pattern</strong>: "insufficient_evidence_for_claim_type" detected across 4 claims
+<strong>Recurring pattern</strong>: "anonymous_or_uncited" detected across 7 claims</p>
+<hr />
+<h2>Introduction</h2>
+<p>Welcome to Evident, where we check the facts from popular media. Today we've reviewed 23 claims from JRE Clips. Our research found that while a small number of claims were supported by evidence, a significant portion—nearly half—lack sufficient information for verification, and several key claims are unsupported by the available facts.</p>
+<hr />
+<h2>Analysis</h2>
+<h3>High-Severity Findings</h3>
+<p>The claim that Cam Higgby was on the front lines supporting chaos in Minneapolis is FALSE. The transcript misattributes actions to Higgby that were actually performed by Nick Sortor, who was surrounded by protesters, not inciting chaos. This is an inverted role, presenting someone as a supporter of disruption when evidence suggests the opposite. <strong>See C001 in Claim Details.</strong></p>
+<p>The claim that the Minneapolis protests didn't involve ICE personnel is FALSE. Evidence from the Department of Justice confirms both ICE and CBP officers were involved in Operation Metro Surge, with 2,000 ICE and 1,000 CBP officers participating. <strong>See C002 in Claim Details.</strong></p>
+<p>The claim that Speaker 1 was a Certified Personal Protection Instructor (CPL) for years is FALSE. The evidence shows they are a DOJ Certified Instructor for the Firearm Safety Certificate (FSC) Program, not a CPL instructor. This is a misuse of terminology, creating a false impression of credentials. <strong>See C006 in Claim Details.</strong></p>
+<p>The claim regarding the ICE raid in California, stating no fatalities occurred and individuals smashed police cars and started fires, is FALSE. Evidence confirms a man was fatally struck by a vehicle during the raid, and there's no evidence of smashed cars or fires. This is a significant omission of crucial context. <strong>See C007 in Claim Details.</strong></p>
+<p>The claim that individuals broke into a store during the California ICE raid, with no law enforcement intervention, is FALSE. Evidence shows ICE was conducting employment audits at a 7-Eleven, not responding to a break-in. <strong>See C009 in Claim Details.</strong></p>
+<p>The claim that Antifa groups are consistently present at ICE buildings, night after night, to provoke incidents is FALSE. Evidence indicates protests are localized and involve a small number of participants, with no mention of nightly activity. The repetition of "night after night" is hyperbolic and exaggerates the frequency of these events. <strong>See C015 in Claim Details.</strong></p>
+<p>The narrative group G001, arguing that prolonged protests with minimal police involvement lead to federal incidents, is MISLEADING. The evidence only shows isolated sequences of events, not a proven causal relationship. The claim of a "mathematical formula" is a false causation tactic, implying a connection where none is demonstrated. <strong>See narrative group G001.</strong></p>
+<p>The narrative group G002, constructing a framework where federal agencies fill protection duties when local police fail, using a mathematical formula to justify National Guard deployments, is MISLEADING. The claimed formula is fabricated, and federal building protection is the responsibility of the FPS, not ICE/FBI. The speaker cherry-picks information to support a predetermined conclusion. <strong>See narrative group G002.</strong></p>
+<h3>Confirmed Claims</h3>
+<p>The claim that Customs and Border Patrol (CBP) assisted ICE during the protests is TRUE. Evidence confirms CBP personnel were deployed alongside ICE agents at Black Lives Matter protests. <strong>See C004 in Claim Details.</strong></p>
+<p>The claim that individuals frequently gather at Home Depots in California as day laborers, often targeted during ICE raids, is TRUE. Multiple sources confirm this pattern of activity and ICE enforcement actions. <strong>See C008 in Claim Details.</strong></p>
+<h3>Unresolved Claims</h3>
+<p>The claim that the shooting incident was caused by CBP, not ICE, is rated INSUFFICIENT EVIDENCE. The available evidence confirms CBP officers were involved, aligning with the transcript quote, but does not offer further detail. <strong>See C003 in Claim Details.</strong></p>
+<p>The claim regarding training requirements for concealed carry holders—specifically, not engaging physically and carrying licenses/ID—is rated INSUFFICIENT EVIDENCE. The provided evidence snippets do not contain information about these specific training requirements. <strong>See C005 in Claim Details.</strong></p>
+<p>Claims C018, C019, C020, C021, C022, and C023 are all rated INSUFFICIENT EVIDENCE due to a lack of supporting evidence snippets. <strong>See C018, C019, C020, C021, C022, and C023 in Claim Details.</strong></p>
+<h3>Detected Patterns</h3>
+<p>A recurring issue is the reliance on claims lacking sufficient supporting evidence, appearing across multiple verdicts as "Insufficient Evidence" and flagged with issues like "insufficient_evidence_for_claim_type" and simply "insufficient_evidence." This suggests a pattern of assertions being made without a solid factual basis to support them.</p>
+<p>We also see several instances of information presented selectively, identified by the "cherry_picked" red flag and rhetorical issue. This indicates that while some information may be accurate, it's being used in a way that doesn't represent the full picture. </p>
+<p>Finally, unsubstantiated claims involving calculations or formulas appear multiple times, flagged as "Unsubstantiated 'mathematical formula' claim" and described as a "Rhetorical use of 'mathematical formula' without evidence." This suggests an attempt to lend credibility to an argument through the <em>mention</em> of a formula, rather than providing any actual, verifiable calculation.</p>
+<hr />
+<h2>Conclusion</h2>
+<p>Let's look at what the evidence actually shows. Three claims were verified as true, while eight were found to be false, including misattributing experiences and exaggerating the consistent presence of specific groups at protests. A significant portion of the claims—twelve in total—could not be verified due to insufficient evidence, and it's important to note the presence of unsubstantiated assertions and a misuse of acronyms. The key takeaway is that while some elements align with reported events, many claims rely on unverified information or present a misleading picture of the situation.</p>
+<hr />
+<h2>Claim Details</h2>
+<h3>High-Severity Claims</h3>
+<h4>C001: "Cam Higgby has been on the front lines of the Crucible and has been a big supporter of the effort to cause chaos in Minneapolis"</h4>
+<p><strong>Rating:</strong> FALSE | <strong>Confidence:</strong> 90% | <strong>Severity:</strong> high</p>
+<p><strong>Explanation:</strong> The claim misattributes Nick Sortor's experience to Cam Higgby. News articles confirm Sortor was surrounded by anti-ICE protesters, not a supporter of chaos. The transcript likely misheard 'Nick Sortor' as 'Cam Higgby'.</p>
+<p><strong>Sources:</strong> Tier 6 — General web (1)</p>
+<p><strong>Citations:</strong>
+- <a href="https://abc3340.com/news/nation-world/influencer-nick-sortor-swarmed-in-his-car-at-anti-ice-protest-in-minnesota-minneapolis-immigration-kristi-noem-homeland-security-cam-higby">https://abc3340.com/news/nation-world/influencer-nick-sortor-swarmed-in-his-car-at-anti-ice-protest-in-minnesota-minneapolis-immigration-kristi-noem-homeland-security-cam-higby</a> — "anti-Immigration and Custom Enforcement (ICE) protesters in Minneapolis while in his car.
+"These are the moments leading..."
+- <a href="https://abc3340.com/news/nation-world/influencer-nick-sortor-swarmed-in-his-car-at-anti-ice-protest-in-minnesota-minneapolis-immigration-kristi-noem-homeland-security-cam-higby">https://abc3340.com/news/nation-world/influencer-nick-sortor-swarmed-in-his-car-at-anti-ice-protest-in-minnesota-minneapolis-immigration-kristi-noem-homeland-security-cam-higby</a> — "Influencer swarmed in his car by anti-ICE protesters in Minnesota"
+- <a href="https://abc3340.com/news/nation-world/influencer-nick-sortor-swarmed-in-his-car-at-anti-ice-protest-in-minnesota-minneapolis-immigration-kristi-noem-homeland-security-cam-higby">https://abc3340.com/news/nation-world/influencer-nick-sortor-swarmed-in-his-car-at-anti-ice-protest-in-minnesota-minneapolis-immigration-kristi-noem-homeland-security-cam-higby</a> — "Secretary Kristi Noem announced over the weekend that more ICE agents would be sent to Minneapolis for another immigrati..."</p>
+<p><strong>Red Flags:</strong> Misattribution of person's name</p>
+<p><strong>Rhetorical Issues:</strong> Inverted role (victim vs. supporter)</p>
+<p><strong>Corrected Claim:</strong> Nick Sortor was surrounded by anti-ICE protesters in Minneapolis and was not a supporter of chaos; the claim incorrectly attributes the incident to Cam Higgby.</p>
+<hr />
+<h4>C015: "The speaker claims that Antifa groups are consistently present in front of ICE buildings, night after night, as part of a calculated strategy to provoke incidents"</h4>
+<p><strong>Rating:</strong> FALSE | <strong>Confidence:</strong> 85% | <strong>Severity:</strong> high</p>
+<p><strong>Explanation:</strong> The claim states Antifa groups are 'consistently present... night after night,' but evidence shows protests are 'largely confined to one city block' and 'a handful of participants during the day' (AP News), with no mention of nightly activity. The Wikipedia entry notes ongoing protests but does not specify nightly presence, contradicting the claim's hyperbolic assertion.</p>
+<p><strong>Sources:</strong> Tier 3 — Government / intl orgs (1), Tier 5 — Established news agencies (1), Tier 6 — General web (1)</p>
+<p><strong>Citations:</strong>
+- <a href="https://en.wikipedia.org/wiki/2025%E2%80%932026_Portland,_Oregon_protests">https://en.wikipedia.org/wiki/2025%E2%80%932026_Portland,_Oregon_protests</a> — "le participated in the
+No Kings protests
+at various locations throughout the Portland area.
+[
+25
+]
+[
+26
+]
+Towards the en..."
+- <a href="https://en.wikipedia.org/wiki/2025%E2%80%932026_Portland,_Oregon_protests">https://en.wikipedia.org/wiki/2025%E2%80%932026_Portland,_Oregon_protests</a> — "ames, and addresses of local ICE officers that were handed out at previous protests by
+Rose City Antifa
+and affiliated g..."
+- <a href="https://www.dhs.gov/news/2025/07/11/anarchists-and-rioters-portland-illegally-dox-ice-officers-and-federal-law">https://www.dhs.gov/news/2025/07/11/anarchists-and-rioters-portland-illegally-dox-ice-officers-and-federal-law</a> — "sponsible for doxing these federal officers, including an anarchist and Antifa-affiliated group based in Portland called..."
+- <a href="https://apnews.com/article/fact-check-trump-portland-oregon-protests-antifa-203826406efb7420911ae756b4331f60">https://apnews.com/article/fact-check-trump-portland-oregon-protests-antifa-203826406efb7420911ae756b4331f60</a> — "y of woman's death
+3 MIN READ
+Families of Venezuelans detained for political activism demand their release outside infam..."
+- <a href="https://en.wikipedia.org/wiki/2025%E2%80%932026_Portland,_Oregon_protests">https://en.wikipedia.org/wiki/2025%E2%80%932026_Portland,_Oregon_protests</a> — "2025–2026 Portland, Oregon protests - Wikipedia
+Jump to content
+From Wikipedia, the free encyclopedia
+Series of protests..."
+- <a href="https://www.oregonlive.com/portland/2026/02/antifa-safehouse-leader-at-portland-ice-protests-singled-out-in-federal-records-report-says.html">https://www.oregonlive.com/portland/2026/02/antifa-safehouse-leader-at-portland-ice-protests-singled-out-in-federal-records-report-says.html</a> — "ee 7-year-old Oregon girl from ICE detention
+Klippenstein, who has regularly received leaked national security documents..."</p>
+<p><strong>Red Flags:</strong> exaggerated frequency, lack of specific evidence for nightly presence</p>
+<p><strong>Rhetorical Issues:</strong> hyperbolic repetition ('night after night after night'), vague terminology ('math formula')</p>
+<p><strong>Corrected Claim:</strong> Antifa groups have participated in protests at ICE buildings, but these are not consistently nightly events; evidence indicates daytime gatherings with limited participants.</p>
+<hr />
+<h4>G001: "The speaker argues that prolonged protests with minimal local police involvement increase the likelihood of incidents between federal officers and protesters, citing multiple causal relationships"</h4>
+<p><strong>Type:</strong> NARRATIVE GROUP | <strong>Rating:</strong> MISLEADING | <strong>Confidence:</strong> 70% | <strong>Severity:</strong> high</p>
+<p><strong>Explanation:</strong> The narrative assembles three claims about causal relationships between protest duration, local police involvement, and federal incidents. However, the evidence provided (Eugene and Minneapolis examples) only shows isolated sequences (e.g., local police leaving followed by federal action) without demonstrating a causal link over time or duration. The narrative falsely presents these correlational events as proof of a mathematical formula, ignoring that the evidence does not support the claimed causal mechanism (attrition, engagements) or quantify the relationship. The rhetorical strategy of 'false_causation' directly misleads by implying a causal relationship where none is established by the evidence.</p>
+<p><strong>Component Claims:</strong>
+- <strong>C014 [INSUFFICIENT EVIDENCE (30%)]</strong> — "The speaker states that the longer protesters engage with federal officers, the higher the probability of an incident occurring due to increased attrition and engagements"
+- <strong>C016 [INSUFFICIENT EVIDENCE (40%)]</strong> — "The speaker argues that prolonged protests with minimal local police involvement increase the likelihood of incidents between federal officers and protesters"
+- <strong>C017 [INSUFFICIENT EVIDENCE (20%)]</strong> — "Reduced involvement of local police departments increases the likelihood of incidents between federal officers and protesters"</p>
+<p><strong>Reasoning Gap:</strong> The evidence shows a sequence of events (local police departure followed by federal action) in two specific cases but fails to establish that prolonged protest duration with minimal local involvement causes increased incidents. No data demonstrates a temporal or quantitative relationship (e.g., longer duration = higher incident rate), and the narrative assumes causation from correlation without evidence.</p>
+<p><strong>Sources:</strong> Not directly listed in narrative analysis, see component claims</p>
+<p><strong>Red Flags:</strong> anonymous_or_uncited, insufficient_evidence, insufficient_evidence_for_claim_type</p>
+<p><strong>Rhetorical Issues:</strong> false_causation</p>
+<p><strong>Rhetorical Strategy:</strong> false_causation</p>
+<p><strong>Corrected Narrative:</strong> The evidence shows a sequence of events (local police departure followed by federal action) in two specific cases but fails to establish that prolonged protest duration with minimal local involvement causes increased incidents. No data demonstrates a temporal or quantitative relationship (e.g., longer duration = higher incident rate), and the narrative assumes causation from correlation without evidence.</p>
+<hr />
+<h4>G002: "The speaker constructs a framework where federal agencies assume protection duties when local police fail, using a mathematical formula as justification for Trump's National Guard deployments"</h4>
+<p><strong>Type:</strong> NARRATIVE GROUP | <strong>Rating:</strong> MISLEADING | <strong>Confidence:</strong> 90% | <strong>Severity:</strong> high</p>
+<p><strong>Explanation:</strong> The narrative thesis falsely claims a mathematical formula justifies National Guard deployments. Evidence shows no such formula exists (C010 and C012 are false), and federal building protection is the Federal Protective Service's (FPS) responsibility, not ICE/FBI (C012 false). Deployments were for crime/immigration enforcement under Title 10 (C011 true), not a formula, and C013's 'two buildings' claim is unsupported. The speaker fabricates the formula to lend false credibility to the deployment rationale.</p>
+<p><strong>Component Claims:</strong>
+- <strong>C010 [INSUFFICIENT EVIDENCE (30%)]</strong> — "A mathematical formula suggests that if local police fail to protect federal buildings, federal agencies like ICE and FBI will assume responsibility for protection"
+- <strong>C012 [FALSE (90%)]</strong> — "The speaker claims that if local police are not protecting federal buildings, federal agencies like ICE and FBI will take responsibility for protection, following a mathematical formula"
+- <strong>C011 [TRUE (90%)]</strong> — "Trump's actions involved unleashing the National Guard to address situations where local police are unable to protect federal assets"
+- <strong>C013 [FALSE (85%)]</strong> — "The speaker asserts that Trump's deployment of the National Guard is specifically to protect federal buildings, with each deployment targeting two federal buildings"</p>
+<p><strong>Reasoning Gap:</strong> The narrative falsely equates the speaker's rhetorical claim of a 'mathematical formula' with actual legal justification, ignoring that deployments were based on Title 10 authority and crime/immigration contexts without mathematical basis.</p>
+<p><strong>Sources:</strong> Not directly listed in narrative analysis, see component claims</p>
+<p><strong>Red Flags:</strong> Misrepresentation of executive order content, Unsubstantiated 'mathematical formula' claim, cherry_picked, insufficient_evidence_for_claim_type</p>
+<p><strong>Rhetorical Issues:</strong> rhetorical_use_of_mathematical_formula, cherry_picked</p>
+<p><strong>Rhetorical Strategy:</strong> appeal_to_authority</p>
+<p><strong>Corrected Narrative:</strong> The narrative falsely equates the speaker's rhetorical claim of a 'mathematical formula' with actual legal justification, ignoring that deployments were based on Title 10 authority and crime/immigration contexts without mathematical basis.</p>
+<h3>Medium-Severity Claims</h3>
+<h4>C002: "The protests in Minneapolis involved customs border patrol personnel rather than ICE, as they were brought in to manage the situation"</h4>
+<p><strong>Rating:</strong> FALSE | <strong>Confidence:</strong> 90% | <strong>Severity:</strong> medium</p>
+<p><strong>Explanation:</strong> The evidence from the Department of Justice attorney testimony (as reported in the Wikipedia article) states that both ICE and CBP officers were involved in Operation Metro Surge, with 2,000 ICE officers and 1,000 CBP officers participating. The claim that 'it wasn't ICE' is directly contradicted by this evidence.</p>
+<p><strong>Sources:</strong> Tier 6 — General web (1)</p>
+<p><strong>Citations:</strong>
+- <a href="https://en.wikipedia.org/wiki/Operation_Metro_Surge">https://en.wikipedia.org/wiki/Operation_Metro_Surge</a> — "A Department of Justice attorney testified that, as of January 26, at least 2,000 Immigration and Customs Enforcement (I..."</p>
+<p><strong>Red Flags:</strong> None</p>
+<p><strong>Rhetorical Issues:</strong> None</p>
+<p><strong>Corrected Claim:</strong> The protests in Minneapolis involved both ICE and Customs and Border Patrol personnel, with 2,000 ICE officers and 1,000 CBP officers participating as of January 26.</p>
+<hr />
+<h4>C003: "The incident involving the shooting was not caused by ICE but by Customs and Border Patrol (CBP) officers"</h4>
+<p><strong>Rating:</strong> INSUFFICIENT EVIDENCE | <strong>Confidence:</strong> 40% | <strong>Severity:</strong> medium</p>
+<p><strong>Explanation:</strong> ProPublica evidence directly identifies the shooters as CBP officers (Border Patrol agent Jesus Ochoa and CBP officer Raymundo Gutierrez), confirming the incident was caused by CBP, not ICE. The transcript quote aligns with this factual attribution.</p>
+<p><strong>Sources:</strong> Tier 6 — General web (1)</p>
+<p><strong>Citations:</strong>
+- <a href="https://www.propublica.org/article/alex-pretti-shooting-cbp-agents-identified-jesus-ochoa-raymundo-gutierrez">https://www.propublica.org/article/alex-pretti-shooting-cbp-agents-identified-jesus-ochoa-raymundo-gutierrez</a> — "The two federal immigration agents who fired on Minneapolis protester Alex Pretti are identified in government records a..."</p>
+<p><strong>Red Flags:</strong> insufficient_evidence_for_claim_type</p>
+<p><strong>Rhetorical Issues:</strong> None</p>
+<hr />
+<h4>C004: "Customs and Border Patrol (CBP) was brought in to assist Immigration and Customs Enforcement (ICE) during the protests"</h4>
+<p><strong>Rating:</strong> TRUE | <strong>Confidence:</strong> 90% | <strong>Severity:</strong> medium</p>
+<p><strong>Explanation:</strong> Evidence confirms CBP personnel were deployed at protests (SNIP00029) and that ICE and CBP agents were deployed together at Black Lives Matter protests (SNIP00025, SNIP00026). The BBC source (SNIP00033) explicitly states Border Patrol (a CBP branch) assists ICE in interior operations, supporting the claim that CBP was brought in to assist ICE during protests.</p>
+<p><strong>Sources:</strong> Tier 5 — Established news agencies (1), Tier 6 — General web (1)</p>
+<p><strong>Citations:</strong>
+- <a href="https://www.americanimmigrationcouncil.org/blog/black-lives-matter-ice/">https://www.americanimmigrationcouncil.org/blog/black-lives-matter-ice/</a> — "ICE and CBP Agents Were Deployed at Black Lives Matter Protests"
+- <a href="https://www.americanimmigrationcouncil.org/blog/black-lives-matter-ice/">https://www.americanimmigrationcouncil.org/blog/black-lives-matter-ice/</a> — "Reports of CBP and ICE at protests also flag their use of surveillance technology like drones and aircraft."
+- <a href="https://www.bbc.com/news/articles/cp80ljjd5rwo">https://www.bbc.com/news/articles/cp80ljjd5rwo</a> — "Border Patrol is a uniformed branch of law enforcement that is part of the US Customs and Border Protection (CBP) agency..."</p>
+<p><strong>Red Flags:</strong> None</p>
+<p><strong>Rhetorical Issues:</strong> None</p>
+<hr />
+<h4>C005: "Concealed carry holders are trained not to physically engage with individuals and must carry their licenses and ID at all times"</h4>
+<p><strong>Rating:</strong> INSUFFICIENT EVIDENCE | <strong>Confidence:</strong> 30% | <strong>Severity:</strong> medium</p>
+<p><strong>Explanation:</strong> The evidence snippets do not provide information about training requirements for concealed carry holders regarding physical engagement. The claim's requirement to carry ID at all times is not mentioned in any evidence snippet, and the license carrying requirement is only implied through general licensing restrictions without explicit 'at all times' language.</p>
+<p><strong>Sources:</strong> Tier 6 — General web (1)</p>
+<p><strong>Red Flags:</strong> insufficient_evidence</p>
+<p><strong>Rhetorical Issues:</strong> None</p>
+<hr />
+<h4>C006: "Speaker 1 has been a Certified Personal Protection Instructor (CPL) for years"</h4>
+<p><strong>Rating:</strong> FALSE | <strong>Confidence:</strong> 90% | <strong>Severity:</strong> medium</p>
+<p><strong>Explanation:</strong> The claim references 'CPL' (Certified Personal Protection Instructor), but the evidence from the California DOJ website specifies 'DOJ Certified Instructor' for the Firearm Safety Certificate (FSC) Program. The term 'CPL' is not used in the evidence, indicating a misstatement or confusion in the claim.</p>
+<p><strong>Sources:</strong> Tier 3 — Government / intl orgs (1)</p>
+<p><strong>Citations:</strong>
+- <a href="https://oag.ca.gov/firearms/fscinfo">https://oag.ca.gov/firearms/fscinfo</a> — "Becoming A DOJ Certified Instructor And Maintaining Current DOJ Certified Instructor Certification | State of California..."
+- <a href="https://oag.ca.gov/firearms/fscinfo">https://oag.ca.gov/firearms/fscinfo</a> — "rearm Safety  Certificate (FSC) Program DOJ Certified Instructor application (form BOF 037)
+or apply online through the
+..."
+- <a href="https://oag.ca.gov/firearms/fscinfo">https://oag.ca.gov/firearms/fscinfo</a> — " Owning A Firearm Pamphlet
+For additional information regarding the FSC program, please review the
+Frequently Asked Ques..."
+- <a href="https://oag.ca.gov/firearms/fscinfo">https://oag.ca.gov/firearms/fscinfo</a> — "cient
+National Rifle Association-Certified Instructor, Law Enforcement Instructor, Rangemaster, or Training Counselor
+Co..."</p>
+<p><strong>Red Flags:</strong> Incorrect certification acronym (CPL vs. DOJ Certified Instructor)</p>
+<p><strong>Rhetorical Issues:</strong> Misuse of acronym 'CPL' instead of the verified 'DOJ Certified Instructor'</p>
+<p><strong>Corrected Claim:</strong> Speaker 1 has been a DOJ Certified Instructor for the FSC Program for years</p>
+<hr />
+<h4>C007: "During an ICE raid on a Home Depot in California, individuals smashed police cars and started fires, but no fatalities occurred"</h4>
+<p><strong>Rating:</strong> FALSE | <strong>Confidence:</strong> 90% | <strong>Severity:</strong> medium</p>
+<p><strong>Explanation:</strong> The claim states no fatalities occurred during the ICE raid, but evidence from ABC7 and CNN confirms a man was fatally struck by a vehicle while fleeing the raid. The evidence does not support the claim that individuals smashed police cars or started fires.</p>
+<p><strong>Sources:</strong> Tier 6 — General web (1)</p>
+<p><strong>Citations:</strong>
+- <a href="https://abc7.com/post/vigil-honors-man-fatally-struck-vehicle-210-freeway-fleeing-ice-raid-home-depot-monrovia/17987446/">https://abc7.com/post/vigil-honors-man-fatally-struck-vehicle-210-freeway-fleeing-ice-raid-home-depot-monrovia/17987446/</a> — "A 52-year-old man who was fatally struck by a vehicle on the 210 Freeway in Monrovia after he fled from a U.S. Immigrati..."
+- <a href="https://www.cnn.com/2025/08/15/us/immigration-raid-man-freeway-death-hnk">https://www.cnn.com/2025/08/15/us/immigration-raid-man-freeway-death-hnk</a> — "A man running from an immigration raid in Los Angeles dies after an SUV hit him on a Los Angeles freeway, officials say"</p>
+<p><strong>Red Flags:</strong> None</p>
+<p><strong>Rhetorical Issues:</strong> missing_context</p>
+<p><strong>Corrected Claim:</strong> During an ICE raid on a Home Depot in California, a man was fatally struck by a vehicle while fleeing, and there is no evidence of individuals smashing police cars or starting fires.</p>
+<hr />
+<h4>C008: "In California, individuals frequently gathered in front of Home Depots, often as day laborers, during ICE raids"</h4>
+<p><strong>Rating:</strong> TRUE | <strong>Confidence:</strong> 90% | <strong>Severity:</strong> medium</p>
+<p><strong>Explanation:</strong> Multiple credible sources confirm that day laborers regularly gather at Home Depot parking lots in California, and these locations are targeted during ICE raids. Evidence shows this is a longstanding pattern with documented enforcement actions and organizational responses.</p>
+<p><strong>Sources:</strong> Tier 6 — General web (1)</p>
+<p><strong>Citations:</strong>
+- <a href="https://www.latimes.com/california/story/2025-11-22/ice-out-of-home-depot-monrovia">https://www.latimes.com/california/story/2025-11-22/ice-out-of-home-depot-monrovia</a> — "For decades, Home Depot parking lots have functioned as workplaces for day laborers, many of whom are immigrants and sho..."
+- <a href="https://www.latimes.com/california/story/2025-08-15/home-depot-ice-enforcement-battleground-los-angeles">https://www.latimes.com/california/story/2025-08-15/home-depot-ice-enforcement-battleground-los-angeles</a> — "On Thursday, agents moved on a Home Depot parking lot in Monrovia, sending laborers running, including a man who jumped ..."</p>
+<p><strong>Red Flags:</strong> None</p>
+<p><strong>Rhetorical Issues:</strong> None</p>
+<hr />
+<h4>C009: "During the California ICE raid, individuals broke into a store (Amco or 7-Eleven), and law enforcement did not intervene"</h4>
+<p><strong>Rating:</strong> FALSE | <strong>Confidence:</strong> 90% | <strong>Severity:</strong> medium</p>
+<p><strong>Explanation:</strong> The evidence from credible sources (NBC News, KTVU) describes ICE conducting employment audits at 7-Eleven stores, not individuals breaking into the store. The claim of a break-in and police inaction is contradicted by the evidence, which details the raids as routine employment audits.</p>
+<p><strong>Sources:</strong> Tier 6 — General web (2)</p>
+<p><strong>Citations:</strong>
+- <a href="https://www.nbcnews.com/news/us-news/immigration-agents-raid-7-eleven-stores-nationwide-arrest-21-people-n836531">https://www.nbcnews.com/news/us-news/immigration-agents-raid-7-eleven-stores-nationwide-arrest-21-people-n836531</a> — "Agents said they targeted about 100 7-Eleven stores nationwide Wednesday to open employment audits and interview workers..."
+- <a href="https://www.ktvu.com/news/ice-agents-raid-100-7-eleven-stores-including-several-in-the-bay-area">https://www.ktvu.com/news/ice-agents-raid-100-7-eleven-stores-including-several-in-the-bay-area</a> — "U.S. immigration agents descended on dozens of 7-Eleven stores before dawn Wednesday to open employment audits and inter..."</p>
+<p><strong>Red Flags:</strong> None</p>
+<p><strong>Rhetorical Issues:</strong> None</p>
+<hr />
+<h4>C018: "A protester at a supposed peaceful demonstration was fully armed with two magazines, raising concerns about the situation"</h4>
+<p><strong>Rating:</strong> INSUFFICIENT EVIDENCE | <strong>Confidence:</strong> 20% | <strong>Severity:</strong> medium</p>
+<p><strong>Explanation:</strong> No evidence snippets were retrieved for this claim, so it cannot be verified.</p>
+<p><strong>Red Flags:</strong> anonymous_or_uncited</p>
+<p><strong>Rhetorical Issues:</strong> None</p>
+<hr />
+<h4>C019: "A group referred to as 'the liver' is described as being pro-second amendment, though the term may be a typo or misnomer"</h4>
+<p><strong>Rating:</strong> INSUFFICIENT EVIDENCE | <strong>Confidence:</strong> 20% | <strong>Severity:</strong> medium</p>
+<p><strong>Explanation:</strong> No evidence snippets were retrieved for this claim, so it cannot be verified.</p>
+<p><strong>Red Flags:</strong> anonymous_or_uncited</p>
+<p><strong>Rhetorical Issues:</strong> None</p>
+<hr />
+<h4>C020: "MSNBC is alleged to have altered the image of an individual to make them appear more sympathetic after being shot"</h4>
+<p><strong>Rating:</strong> INSUFFICIENT EVIDENCE | <strong>Confidence:</strong> 20% | <strong>Severity:</strong> medium</p>
+<p><strong>Explanation:</strong> No evidence snippets were retrieved for this claim, so it cannot be verified.</p>
+<p><strong>Red Flags:</strong> anonymous_or_uncited</p>
+<p><strong>Rhetorical Issues:</strong> None</p>
+<hr />
+<h4>C021: "CNN is claimed to have portrayed the speaker as green and dying during the COVID pandemic, while making another individual appear handsome"</h4>
+<p><strong>Rating:</strong> INSUFFICIENT EVIDENCE | <strong>Confidence:</strong> 20% | <strong>Severity:</strong> medium</p>
+<p><strong>Explanation:</strong> No evidence snippets were retrieved for this claim, so it cannot be verified.</p>
+<p><strong>Red Flags:</strong> anonymous_or_uncited</p>
+<p><strong>Rhetorical Issues:</strong> None</p>
+<hr />
+<h4>C022: "Speaker 1 claims that the nose of the subject was shrunk slightly during the transformation"</h4>
+<p><strong>Rating:</strong> INSUFFICIENT EVIDENCE | <strong>Confidence:</strong> 20% | <strong>Severity:</strong> medium</p>
+<p><strong>Explanation:</strong> No evidence snippets were retrieved for this claim, so it cannot be verified.</p>
+<p><strong>Red Flags:</strong> anonymous_or_uncited</p>
+<p><strong>Rhetorical Issues:</strong> None</p>
+<hr />
+<h4>C023: "Speaker 2 states that the shoulders of the subject were plumped up during the transformation"</h4>
+<p><strong>Rating:</strong> INSUFFICIENT EVIDENCE | <strong>Confidence:</strong> 20% | <strong>Severity:</strong> medium</p>
+<p><strong>Explanation:</strong> No evidence snippets were retrieved for this claim, so it cannot be verified.</p>
+<p><strong>Red Flags:</strong> anonymous_or_uncited</p>
+<p><strong>Rhetorical Issues:</strong> None</p>
+<hr />
+<h2>Sources</h2>
+<ul>
+<li><a href="https://oag.ca.gov/firearms/fscinfo">https://oag.ca.gov/firearms/fscinfo</a> — Tier 3 (Government / intl orgs)</li>
+<li><a href="https://www.dhs.gov/news/2025/07/11/anarchists-and-rioters-portland-illegally-dox-ice-officers-and-federal-law">https://www.dhs.gov/news/2025/07/11/anarchists-and-rioters-portland-illegally-dox-ice-officers-and-federal-law</a> — Tier 3 (Government / intl orgs)</li>
+<li><a href="https://apnews.com/article/fact-check-trump-portland-oregon-protests-antifa-203826406efb7420911ae756b4331f60">https://apnews.com/article/fact-check-trump-portland-oregon-protests-antifa-203826406efb7420911ae756b4331f60</a> — Tier 5 (Established news agencies)</li>
+<li><a href="https://www.bbc.com/news/articles/cp80ljjd5rwo">https://www.bbc.com/news/articles/cp80ljjd5rwo</a> — Tier 5 (Established news agencies)</li>
+<li><a href="https://www.bbc.com/news/articles/cwy9z7yg2n7o">https://www.bbc.com/news/articles/cwy9z7yg2n7o</a> — Tier 5 (Established news agencies)</li>
+<li><a href="https://www.nytimes.com/2026/02/04/us/brian-ohara-minneapolis-police-ice.html">https://www.nytimes.com/2026/02/04/us/brian-ohara-minneapolis-police-ice.html</a> — Tier 5 (Established news agencies)</li>
+<li><a href="https://abc3340.com/news/nation-world/influencer-nick-sortor-swarmed-in-his-car-at-anti-ice-protest-in-minnesota-minneapolis-immigration-kristi-noem-homeland-security-cam-higby">https://abc3340.com/news/nation-world/influencer-nick-sortor-swarmed-in-his-car-at-anti-ice-protest-in-minnesota-minneapolis-immigration-kristi-noem-homeland-security-cam-higby</a> — Tier 6 (General web)</li>
+<li><a href="https://abc7.com/post/vigil-honors-man-fatally-struck-vehicle-210-freeway-fleeing-ice-raid-home-depot-monrovia/17987446/">https://abc7.com/post/vigil-honors-man-fatally-struck-vehicle-210-freeway-fleeing-ice-raid-home-depot-monrovia/17987446/</a> — Tier 6 (General web)</li>
+<li><a href="https://en.wikipedia.org/wiki/2025%E2%80%932026_Portland,_Oregon_protests">https://en.wikipedia.org/wiki/2025%E2%80%932026_Portland,_Oregon_protests</a> — Tier 6 (General web)</li>
+<li><a href="https://en.wikipedia.org/wiki/Operation_Metro_Surge">https://en.wikipedia.org/wiki/Operation_Metro_Surge</a> — Tier 6 (General web)</li>
+<li><a href="https://en.wikipedia.org/wiki/United_States_Federal_Protective_Service">https://en.wikipedia.org/wiki/United_States_Federal_Protective_Service</a> — Tier 6 (General web)</li>
+<li><a href="https://lookouteugene-springfield.com/story/latest-news/2026/01/30/heres-how-the-national-day-of-action-is-playing-out-in-eugene-springfield/">https://lookouteugene-springfield.com/story/latest-news/2026/01/30/heres-how-the-national-day-of-action-is-playing-out-in-eugene-springfield/</a> — Tier 6 (General web)</li>
+<li><a href="https://protectdemocracy.org/work/understanding-national-guard/">https://protectdemocracy.org/work/understanding-national-guard/</a> — Tier 6 (General web)</li>
+<li><a href="https://www.americanimmigrationcouncil.org/blog/black-lives-matter-ice/">https://www.americanimmigrationcouncil.org/blog/black-lives-matter-ice/</a> — Tier 6 (General web)</li>
+<li><a href="https://www.cnn.com/2025/08/15/us/immigration-raid-man-freeway-death-hnk">https://www.cnn.com/2025/08/15/us/immigration-raid-man-freeway-death-hnk</a> — Tier 6 (General web)</li>
+<li><a href="https://www.ktvu.com/news/ice-agents-raid-100-7-eleven-stores-including-several-in-the-bay-area">https://www.ktvu.com/news/ice-agents-raid-100-7-eleven-stores-including-several-in-the-bay-area</a> — Tier 6 (General web)</li>
+<li><a href="https://www.latimes.com/california/story/2025-08-15/home-depot-ice-enforcement-battleground-los-angeles">https://www.latimes.com/california/story/2025-08-15/home-depot-ice-enforcement-battleground-los-angeles</a> — Tier 6 (General web)</li>
+<li><a href="https://www.latimes.com/california/story/2025-11-22/ice-out-of-home-depot-monrovia">https://www.latimes.com/california/story/2025-11-22/ice-out-of-home-depot-monrovia</a> — Tier 6 (General web)</li>
+<li><a href="https://www.movementlawlab.org/nationalguard">https://www.movementlawlab.org/nationalguard</a> — Tier 6 (General web)</li>
+<li><a href="https://www.nbcnews.com/news/us-news/immigration-agents-raid-7-eleven-stores-nationwide-arrest-21-people-n836531">https://www.nbcnews.com/news/us-news/immigration-agents-raid-7-eleven-stores-nationwide-arrest-21-people-n836531</a> — Tier 6 (General web)</li>
+<li><a href="https://www.oregonlive.com/portland/2026/02/antifa-safehouse-leader-at-portland-ice-protests-singled-out-in-federal-records-report-says.html">https://www.oregonlive.com/portland/2026/02/antifa-safehouse-leader-at-portland-ice-protests-singled-out-in-federal-records-report-says.html</a> — Tier 6 (General web)</li>
+<li><a href="https://www.propublica.org/article/alex-pretti-shooting-cbp-agents-identified-jesus-ochoa-raymundo-gutierrez">https://www.propublica.org/article/alex-pretti-shooting-cbp-agents-identified-jesus-ochoa-raymundo-gutierrez</a> — Tier 6 (General web)</li>
+<li><a href="https://www.scotusblog.com/2025/10/the-presidents-power-to-deploy-troops-domestically-an-explainer/">https://www.scotusblog.com/2025/10/the-presidents-power-to-deploy-troops-domestically-an-explainer/</a> — Tier 6 (General web)</li>
+</ul>
+        </article>
+
+        <div style="background-color:#f4f4f4;padding:1em;border-radius:0.3em;margin-top:1.5rem;">
+            <details>
+                <summary>Download Artifacts</summary>
+                <p>Artifact downloads are not available in demo mode.</p>
+            </details>
+        </div>
+
+        <nav style="margin-top:1.5rem;display:flex;gap:1rem;">
+            <a href="index.html" role="button">Start New</a>
+            <a href="runs.html" role="button" class="secondary">History</a>
+        </nav>
+    </main>
+    <footer class="container"><small>Evident Video Fact Checker &mdash; Demo</small></footer>
+</body>
+</html>

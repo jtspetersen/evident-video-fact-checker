@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Evident — Video Fact-checker</title>
+    <link rel="stylesheet" href="static/pico.min.css">
+    <style>
+        /* Custom overrides */
+        :root {
+            --pico-font-family-sans-serif: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        }
+        nav .brand {
+            display: inline-flex;
+            align-items: center;
+        }
+        nav .brand img {
+            height: 100px;
+            width: 100px;
+            object-fit: contain;
+        }
+        .demo-tag {
+            background: #ff8f00;
+            color: #000;
+            padding: 0.15em 0.45em;
+            border-radius: 3px;
+            font-size: 0.65rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            vertical-align: super;
+            margin-left: -0.3rem;
+        }
+        nav ul li a[role="button"] {
+            padding: 0.4em 1em;
+            font-size: 0.9rem;
+        }
+        .badge {
+            display: inline-block;
+            padding: 0.15em 0.5em;
+            border-radius: 4px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+        .badge-true { background: #2e7d32; color: #fff; }
+        .badge-likely-true { background: #558b2f; color: #fff; }
+        .badge-insufficient-evidence { background: #f9a825; color: #000; }
+        .badge-conflicting-evidence { background: #ff8f00; color: #000; }
+        .badge-likely-false { background: #e65100; color: #fff; }
+        .badge-false { background: #c62828; color: #fff; }
+        .badge-running { background: #1565c0; color: #fff; }
+        .badge-review { background: #6a1b9a; color: #fff; }
+        .badge-done { background: #2e7d32; color: #fff; }
+        .badge-error { background: #c62828; color: #fff; }
+        .badge-pending { background: #757575; color: #fff; }
+        .badge-cancelled { background: #757575; color: #fff; }
+
+        /* Stage timeline */
+        .stage-timeline {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin: 1rem 0;
+        }
+        .stage-box {
+            padding: 0.4em 0.8em;
+            border-radius: 6px;
+            font-size: 0.8em;
+            background: var(--pico-muted-border-color);
+            color: var(--pico-muted-color);
+            white-space: nowrap;
+        }
+        .stage-box.active {
+            background: #1565c0;
+            color: #fff;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        .stage-box.completed {
+            background: #2e7d32;
+            color: #fff;
+        }
+        .stage-box.skipped {
+            opacity: 0.5;
+            text-decoration: line-through;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        /* Log stream */
+        .log-stream {
+            max-height: 400px;
+            overflow-y: auto;
+            background: var(--pico-code-background-color);
+            padding: 0.75rem;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 0.8em;
+            line-height: 1.6;
+        }
+        .log-stream .log-line {
+            border-bottom: 1px solid var(--pico-muted-border-color);
+            padding: 2px 0;
+        }
+
+        /* Drop zone */
+        .drop-zone {
+            border: 2px dashed var(--pico-muted-border-color);
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+        }
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: var(--pico-primary);
+            background: var(--pico-primary-focus);
+        }
+        .drop-zone input[type="file"] {
+            display: none;
+        }
+
+        /* Report content */
+        .report-content h1 { font-size: 1.6rem; margin-top: 1.5rem; }
+        .report-content h2 { font-size: 1.3rem; margin-top: 1.3rem; }
+        .report-content h3 { font-size: 1.1rem; margin-top: 1rem; }
+        .report-content table { font-size: 0.9em; }
+        .report-content blockquote {
+            border-left: 3px solid var(--pico-primary);
+            padding-left: 1rem;
+            font-style: italic;
+        }
+
+        h1 { font-size: 1.5em; }
+        footer { margin-top: 2rem; text-align: center; font-size: 0.85em; }
+    </style>
+</head>
+<body>
+    <nav class="container-fluid">
+        <ul>
+            <li><a href="index.html" class="brand"><img src="images/Evident_logo.png" alt="Evident"></a> <span class="demo-tag">DEMO</span></li>
+        </ul>
+        <ul>
+            <li><a href="index.html" role="button">Start New</a></li>
+            <li><a href="runs.html" role="button" class="secondary">History</a></li>
+        </ul>
+    </nav>
+    <hr style="margin:0;">
+
+    <main class="container">
+        <hgroup>
+            <h1>Video Fact-checker</h1>
+            <p>Provide a YouTube URL or upload a transcript to begin fact-checking.</p>
+        </hgroup>
+
+        <!-- Input mode toggle -->
+        <div role="group" style="margin-bottom:1rem;">
+            <button type="button" id="mode-url-btn" onclick="setMode('url')">YouTube URL</button>
+            <button type="button" id="mode-file-btn" class="secondary" onclick="setMode('file')">Upload File</button>
+        </div>
+
+        <form id="main-form" novalidate>
+            <!-- YouTube URL input section (visible by default) -->
+            <div id="url-input-section">
+                <label for="youtube-url">
+                    YouTube Video URL
+                    <input type="url" name="youtube_url" id="youtube-url"
+                           value="https://www.youtube.com/watch?v=0fiBf-E7e0w" required>
+                </label>
+                <small>Supports youtube.com/watch, youtu.be, shorts, and embed URLs</small>
+            </div>
+
+            <!-- File input section (hidden by default) -->
+            <div id="file-input-section" style="display:none;">
+                <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+                    <p><strong>Drag &amp; drop a transcript file here</strong></p>
+                    <p><small>or click to browse (.txt, .md)</small></p>
+                    <input type="file" name="transcript" id="file-input" accept=".txt,.md">
+                    <p id="file-name" style="display:none; margin-top:0.5rem;"></p>
+                </div>
+
+                <label for="video-title" style="margin-top:1rem;">
+                    Video Title
+                    <input type="text" name="video_title" id="video-title"
+                           value="Andrew Wilson Discusses the Alex Pretti Shooting and Minneapolis ICE Protests">
+                </label>
+
+                <label for="channel">
+                    Channel / Creator Name
+                    <input type="text" name="channel" id="channel"
+                           value="JRE Clips">
+                </label>
+            </div>
+
+            <!-- Options -->
+            <fieldset>
+                <legend>Options</legend>
+                <label>
+                    <input type="checkbox" name="review" value="true" checked>
+                    Enable claim review (pause pipeline to review/edit extracted claims)
+                </label>
+            </fieldset>
+
+            <!-- Submit -->
+            <button type="submit" id="submit-btn">Fetch & Fact-Check</button>
+        </form>
+    </main>
+
+    <footer class="container">
+        <small>Evident Video Fact Checker &mdash; Demo</small>
+    </footer>
+
+    <script>
+    (function() {
+        const form = document.getElementById('main-form');
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const fileName = document.getElementById('file-name');
+        const submitBtn = document.getElementById('submit-btn');
+        const fileSection = document.getElementById('file-input-section');
+        const urlSection = document.getElementById('url-input-section');
+        const urlInput = document.getElementById('youtube-url');
+        const fileModeBtn = document.getElementById('mode-file-btn');
+        const urlModeBtn = document.getElementById('mode-url-btn');
+        const videoTitleInput = document.getElementById('video-title');
+        const channelInput = document.getElementById('channel');
+
+        let currentMode = 'url';
+        let fakeFileLoaded = true; // Demo: pretend a file is already loaded
+
+        // Mode toggle
+        window.setMode = function(mode) {
+            currentMode = mode;
+            if (mode === 'url') {
+                fileSection.style.display = 'none';
+                urlSection.style.display = 'block';
+                fileModeBtn.className = 'secondary';
+                urlModeBtn.className = '';
+                submitBtn.textContent = 'Fetch & Fact-Check';
+            } else {
+                fileSection.style.display = 'block';
+                urlSection.style.display = 'none';
+                urlModeBtn.className = 'secondary';
+                fileModeBtn.className = '';
+                submitBtn.textContent = 'Start Fact-Check';
+            }
+        };
+
+        // Demo: show a fake pre-loaded filename in file upload mode
+        fileName.textContent = 'Selected: andrew_wilson_ice_protests_transcript.txt';
+        fileName.style.display = 'block';
+
+        // Custom validation on submit — demo intercepts and redirects
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            if (currentMode === 'url') {
+                if (!urlInput.value.trim()) {
+                    urlInput.setCustomValidity('Please enter a YouTube URL.');
+                    urlInput.reportValidity();
+                    return;
+                }
+                urlInput.setCustomValidity('');
+            }
+            // File mode: skip validation — demo has a fake file pre-loaded
+
+            // Show busy state
+            submitBtn.disabled = true;
+            submitBtn.setAttribute('aria-busy', 'true');
+            submitBtn.textContent = currentMode === 'url' ? 'Fetching...' : 'Starting...';
+
+            // After 800ms redirect to progress page
+            setTimeout(function() {
+                window.location.href = 'progress.html';
+            }, 800);
+        });
+
+        // Clear custom validity on input
+        urlInput.addEventListener('input', function() { this.setCustomValidity(''); });
+        videoTitleInput.addEventListener('input', function() { this.setCustomValidity(''); });
+        channelInput.addEventListener('input', function() { this.setCustomValidity(''); });
+
+        // Drag & drop
+        ['dragenter', 'dragover'].forEach(function(evt) {
+            dropZone.addEventListener(evt, function(e) {
+                e.preventDefault();
+                dropZone.classList.add('dragover');
+            });
+        });
+        ['dragleave', 'drop'].forEach(function(evt) {
+            dropZone.addEventListener(evt, function(e) {
+                e.preventDefault();
+                dropZone.classList.remove('dragover');
+            });
+        });
+        dropZone.addEventListener('drop', function(e) {
+            var files = e.dataTransfer.files;
+            if (files.length > 0) {
+                fileInput.files = files;
+                showFileName(files[0].name);
+            }
+        });
+
+        // File picker
+        fileInput.addEventListener('change', function() {
+            if (fileInput.files.length > 0) {
+                showFileName(fileInput.files[0].name);
+                fileInput.setCustomValidity('');
+            }
+        });
+
+        function showFileName(name) {
+            fileName.textContent = 'Selected: ' + name;
+            fileName.style.display = 'block';
+        }
+    })();
+    </script>
+</body>
+</html>
