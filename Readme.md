@@ -240,7 +240,7 @@ evident-video-fact-checker/
 
 Try the app without any setup — a static clickable demo walks through the full pipeline using real data from past fact-check runs.
 
-**[Launch Demo](demo/index.html)**
+**[Launch Demo](https://apps.jtspetersen.com/evident-fact-checker-demo/)**
 
 The demo includes:
 - **Landing page** with pre-filled YouTube URL and file upload modes
