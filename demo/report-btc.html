@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Evident — Video Fact-check Report</title>
+    <link rel="stylesheet" href="static/pico.min.css">
+    <style>
+        :root { --pico-font-family-sans-serif: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+        nav .brand { display: inline-flex; align-items: center; }
+        nav .brand img { height: 100px; width: 100px; object-fit: contain; }
+        .demo-tag { background: #ff8f00; color: #000; padding: 0.15em 0.45em; border-radius: 3px; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.05em; vertical-align: super; margin-left: -0.3rem; }
+        nav ul li a[role="button"] { padding: 0.4em 1em; font-size: 0.9rem; }
+        .badge { display: inline-block; padding: 0.15em 0.5em; border-radius: 4px; font-size: 0.85em; font-weight: 600; }
+        .badge-true { background: #2e7d32; color: #fff; }
+        .badge-likely-true { background: #558b2f; color: #fff; }
+        .badge-insufficient-evidence { background: #f9a825; color: #000; }
+        .badge-conflicting-evidence { background: #ff8f00; color: #000; }
+        .badge-likely-false { background: #e65100; color: #fff; }
+        .badge-false { background: #c62828; color: #fff; }
+        .badge-running { background: #1565c0; color: #fff; }
+        .badge-review { background: #6a1b9a; color: #fff; }
+        .badge-done { background: #2e7d32; color: #fff; }
+        .badge-error { background: #c62828; color: #fff; }
+        .badge-pending { background: #757575; color: #fff; }
+        .badge-cancelled { background: #757575; color: #fff; }
+        .stage-timeline { display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 1rem 0; }
+        .stage-box { padding: 0.4em 0.8em; border-radius: 6px; font-size: 0.8em; background: var(--pico-muted-border-color); color: var(--pico-muted-color); white-space: nowrap; }
+        .stage-box.active { background: #1565c0; color: #fff; animation: pulse 1.5s ease-in-out infinite; }
+        .stage-box.completed { background: #2e7d32; color: #fff; }
+        .stage-box.skipped { opacity: 0.5; text-decoration: line-through; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+        .log-stream { max-height: 400px; overflow-y: auto; background: var(--pico-code-background-color); padding: 0.75rem; border-radius: 6px; font-family: monospace; font-size: 0.8em; line-height: 1.6; }
+        .log-stream .log-line { border-bottom: 1px solid var(--pico-muted-border-color); padding: 2px 0; }
+        .drop-zone { border: 2px dashed var(--pico-muted-border-color); border-radius: 8px; padding: 2rem; text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s; }
+        .drop-zone:hover, .drop-zone.dragover { border-color: var(--pico-primary); background: var(--pico-primary-focus); }
+        .drop-zone input[type="file"] { display: none; }
+        .report-content h1 { font-size: 1.6rem; margin-top: 1.5rem; }
+        .report-content h2 { font-size: 1.3rem; margin-top: 1.3rem; }
+        .report-content h3 { font-size: 1.1rem; margin-top: 1rem; }
+        .report-content table { font-size: 0.9em; }
+        .report-content blockquote { border-left: 3px solid var(--pico-primary); padding-left: 1rem; font-style: italic; }
+        h1 { font-size: 1.5em; }
+        footer { margin-top: 2rem; text-align: center; font-size: 0.85em; }
+    </style>
+</head>
+<body>
+    <nav class="container-fluid">
+        <ul><li><a href="index.html" class="brand"><img src="images/Evident_logo.png" alt="Evident"></a> <span class="demo-tag">DEMO</span></li></ul>
+        <ul>
+            <li><a href="index.html" role="button">Start New</a></li>
+            <li><a href="runs.html" role="button" class="secondary">History</a></li>
+        </ul>
+    </nav>
+    <hr style="margin:0;">
+    <main class="container">
+        <hgroup>
+            <h1>Video Fact-check Report</h1>
+        </hgroup>
+
+        <article class="report-content">
+            <p>
+                <strong>Video Title:</strong> JD Vance Mercilessly Booed at Olympic Opening Ceremony<br>
+                <strong>Channel:</strong> Brian Tyler Cohen<br>
+                <strong>ID:</strong> <code>20260207_134923</code><br>
+                <strong>Date:</strong> 2026-02-07
+            </p>
+
+<h2>Executive Overview</h2>
+<p>5 claims analyzed</p>
+<table>
+<thead>
+<tr>
+<th>Rating</th>
+<th>Count</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>TRUE</td>
+<td>2</td>
+</tr>
+<tr>
+<td>LIKELY TRUE</td>
+<td>0</td>
+</tr>
+<tr>
+<td>INSUFFICIENT EVIDENCE</td>
+<td>2</td>
+</tr>
+<tr>
+<td>CONFLICTING EVIDENCE</td>
+<td>0</td>
+</tr>
+<tr>
+<td>LIKELY FALSE</td>
+<td>1</td>
+</tr>
+<tr>
+<td>FALSE</td>
+<td>0</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Key concern areas:</strong> insufficient_evidence_for_claim_type (1), insufficient_evidence (1), Rounded figure (3% vs 3.3%) (1)
+<strong>Source quality:</strong> 5 sources across tiers 6. 0% from tiers 1-3.</p>
+<p>Across five claims, the fact-check revealed a mix of verified and unverified statements. The most significant finding is that while some assertions—like Trump's attendance at the 2024 Libertarian Convention and the convention's timing—were confirmed by multiple sources, others lacked sufficient evidence or were demonstrably inaccurate, such as the consistent 3% vote share for the Libertarian Party. This pattern suggests viewers should approach claims about political events and figures with scrutiny, as not all statements align with available evidence.</p>
+<hr />
+<h2>Key Findings</h2>
+<p><strong>FALSE (high severity):</strong>
+- <strong>C005</strong> — The claim states the Libertarian Party receives exactly 3% of the vote every four years. The evidence shows Gary Johnson received 3.3% in the 2016 ele...</p>
+<p><strong>Rhetorical issue in "C002":</strong> false_causation</p>
+<hr />
+<h2>Introduction</h2>
+<p>Welcome to Brian Tyler Cohen. Today we reviewed five claims, and the results were mixed. While two claims were supported by evidence, we found one to be false, and two others lacked sufficient information for a definitive assessment.</p>
+<hr />
+<h2>Analysis</h2>
+<h3>High-Severity Findings</h3>
+<p>The claim that the Libertarian Party receives 3% of the vote every four years is LIKELY FALSE. The speaker states, "The Libertarian Party receives 3% of the vote every four years." While Gary Johnson did receive 3.3% in 2016, the evidence does not support the claim of consistent 3% vote share across <em>every</em> four-year election cycle. The rhetorical_issues field notes a sweeping generalization without evidence and the use of a rounded figure (3% instead of 3.3%). This is misleading because presenting a rounded, consistent percentage implies a pattern that doesn't exist, exaggerating the party's consistent electoral performance. <strong>See C005 in Claim Details.</strong></p>
+<h3>Confirmed Claims</h3>
+<p>The claim that Trump was at the Libertarian Convention in 2024 is TRUE. The transcript states, "Donald Trump didn't show up…he would rather stay in his insular little bubble…than risk contending with the inevitable avalanche of booze." This is supported by evidence confirming Donald Trump spoke at the 2024 Libertarian National Convention. The rhetorical_issues field identifies false causation, suggesting Trump avoided the convention <em>because</em> of potential booing, which is a speculative connection not supported by the evidence. While the booing at another event is a fact, it's used to imply a causal link to Trump's decision regarding the Libertarian convention. <strong>See C002 in Claim Details.</strong></p>
+<p>The claim that the Libertarian Convention occurred in 2024 is TRUE. Multiple sources, including NBC News, Wikipedia, and the official convention website, confirm the Libertarian National Convention took place in 2024. There are no identified rhetorical issues with this claim. <strong>See C003 in Claim Details.</strong></p>
+<h3>Unresolved Claims</h3>
+<p>The claim that Trump's net worth surged by billions during his tenure as president is rated INSUFFICIENT EVIDENCE. Forbes reported a $3.4 billion increase in Trump's net worth during his presidency, from $3.9 billion to $7.3 billion. However, the claim type requires more comprehensive financial data to definitively confirm the full extent of the surge, making the evidence currently insufficient. <strong>See C001 in Claim Details.</strong></p>
+<p>The claim that Peter Goler of the Kato Institute observed in the Washington Post that this is the first time a presidential candidate of a rival party will address the convention of a party that is presumably gathering to nominate its own candidate is rated INSUFFICIENT EVIDENCE. No credible sources were found to verify this claim. The provided evidence snippets do not include the referenced Washington Post article or any supporting information. <strong>See C004 in Claim Details.</strong></p>
+<h3>Detected Patterns</h3>
+<p>Several claims relied on insufficient evidence to support their assertions, as noted in the ratings for claims C001 and C004. We also observed a tendency to present connections as causation, suggesting one thing directly causes another when the evidence doesn't fully support that link, as seen in claim C002. Finally, there was an instance of using simplified or generalized figures—like rounding 3.3% to 3%—and broad statements without backing data, potentially skewing the perception of the information, as highlighted in claim C005.</p>
+<hr />
+<h2>Conclusion</h2>
+<p>The review found two claims to be true, supported by available evidence. One claim regarding the Libertarian Party's consistent vote share was found to be false, as data indicates fluctuations around the 3% mark. For two other claims, the available evidence was insufficient to reach a definitive conclusion. Ultimately, it's important to rely on precise data when discussing election results and to avoid assuming direct causation without sufficient evidence.</p>
+<hr />
+<h2>Claim Details</h2>
+<h3>High-Severity Claims</h3>
+<h4>C005: "The Libertarian Party receives 3% of the vote every four years"</h4>
+<p><strong>Rating:</strong> LIKELY FALSE | <strong>Confidence:</strong> 65% | <strong>Severity:</strong> high</p>
+<p><strong>Explanation:</strong> The claim states the Libertarian Party receives exactly 3% of the vote every four years. The evidence shows Gary Johnson received 3.3% in the 2016 election (not 3%), and there is no evidence supporting the claim's assertion of consistency across multiple election cycles.</p>
+<p><strong>Sources:</strong> Tier 6 — General web (1)</p>
+<p><strong>Citations:</strong>
+- <a href="https://en.wikipedia.org/wiki/Libertarian_Party_(United_States)">https://en.wikipedia.org/wiki/Libertarian_Party_(United_States)</a> — "Johnson would go on to receive 3.3% of the nationwide popular vote"</p>
+<p><strong>Red Flags:</strong> Rounded figure (3% vs 3.3%), Unsupported generalization (every four years)</p>
+<p><strong>Rhetorical Issues:</strong> Rounded figure (3% instead of 3.3%), Sweeping generalization without evidence</p>
+<p><strong>Corrected Claim:</strong> The Libertarian Party received 3.3% of the vote in the 2016 presidential election, but the claim's exact figure and claim of consistent 3% every four years are inaccurate.</p>
+<h3>Medium-Severity Claims</h3>
+<h4>C001: "Trump's net worth surged by billions during his tenure as president"</h4>
+<p><strong>Rating:</strong> INSUFFICIENT EVIDENCE | <strong>Confidence:</strong> 40% | <strong>Severity:</strong> medium</p>
+<p><strong>Explanation:</strong> Forbes reports Trump's net worth increased from $3.9 billion in 2024 to $7.3 billion as of September 2025, a $3.4 billion surge during his presidency. The article 'Open for business: Trump has doubled his net worth since retaking the White House' confirms this growth period.</p>
+<p><strong>Sources:</strong> Tier 6 — General web (1)</p>
+<p><strong>Citations:</strong>
+- <a href="https://www.gobankingrates.com/money/wealth/how-much-richer-donald-trump-gotten-over-last-5-years/">https://www.gobankingrates.com/money/wealth/how-much-richer-donald-trump-gotten-over-last-5-years/</a> — "As of September 2025, Trump's net worth had climbed to $7.3 billion from $3.9 billion in 2024, Forbes reported."
+- <a href="https://www.ms.now/ali-velshi/trump-forbes-net-worth-profiting-business-deals-corruption">https://www.ms.now/ali-velshi/trump-forbes-net-worth-profiting-business-deals-corruption</a> — "Open for business: Trump has doubled his net worth since retaking the White House"</p>
+<p><strong>Red Flags:</strong> insufficient_evidence_for_claim_type</p>
+<p><strong>Rhetorical Issues:</strong> None</p>
+<hr />
+<h4>C002: "Trump was at the Libertarian Convention in 2024"</h4>
+<p><strong>Rating:</strong> TRUE | <strong>Confidence:</strong> 90% | <strong>Severity:</strong> medium</p>
+<p><strong>Explanation:</strong> The 2024 Libertarian National Convention featured a speech by Donald Trump, as confirmed by the Wikipedia article. The convention was held May 24-27, 2024, and Trump's presence is documented in the evidence snippets. The transcript context correctly references his attendance at the event.</p>
+<p><strong>Sources:</strong> Tier 6 — General web (1)</p>
+<p><strong>Citations:</strong>
+- <a href="https://en.wikipedia.org/wiki/2024_Libertarian_National_Convention">https://en.wikipedia.org/wiki/2024_Libertarian_National_Convention</a> — "During his speech, Trump made a play for the Libertarian nomination and vowed to appoint a Libertarian to his cabinet."
+- <a href="https://en.wikipedia.org/wiki/2024_Libertarian_National_Convention">https://en.wikipedia.org/wiki/2024_Libertarian_National_Convention</a> — "6 votes for Donald Trump"</p>
+<p><strong>Red Flags:</strong> None</p>
+<p><strong>Rhetorical Issues:</strong> false_causation</p>
+<hr />
+<h4>C003: "The Libertarian Convention occurred in 2024"</h4>
+<p><strong>Rating:</strong> TRUE | <strong>Confidence:</strong> 95% | <strong>Severity:</strong> medium</p>
+<p><strong>Explanation:</strong> Multiple credible sources confirm the Libertarian National Convention occurred in 2024, with specific dates (May 23-27, 2024) documented in NBC News, Wikipedia, and the official convention website.</p>
+<p><strong>Sources:</strong> Tier 6 — General web (1)</p>
+<p><strong>Citations:</strong>
+- <a href="https://www.nbcnews.com/politics/2024-election/libertarian-convention-crowd-appears-hostile-trump-ahead-speech-rcna154029">https://www.nbcnews.com/politics/2024-election/libertarian-convention-crowd-appears-hostile-trump-ahead-speech-rcna154029</a> — "Libertarian convention crowd appears hostile to Trump ahead speech"
+- <a href="https://en.wikipedia.org/wiki/2024_Libertarian_National_Convention">https://en.wikipedia.org/wiki/2024_Libertarian_National_Convention</a> — "Date(s)
+May 24–27, 2024"
+- <a href="https://en.wikipedia.org/wiki/2024_Libertarian_National_Convention">https://en.wikipedia.org/wiki/2024_Libertarian_National_Convention</a> — "The 2024 Libertarian National Convention was a political event to select the Libertarian Party nominees for president an..."
+- <a href="https://en.wikipedia.org/wiki/2024_Libertarian_National_Convention">https://en.wikipedia.org/wiki/2024_Libertarian_National_Convention</a> — "During his speech, Trump made a play for the Libertarian nomination"
+- <a href="https://en.wikipedia.org/wiki/2024_Libertarian_National_Convention">https://en.wikipedia.org/wiki/2024_Libertarian_National_Convention</a> — "2024 Libertarian Party presidential primaries"
+- <a href="https://lnc2024.com/">https://lnc2024.com/</a> — "The 2024 Libertarian National Convention"</p>
+<p><strong>Red Flags:</strong> None</p>
+<p><strong>Rhetorical Issues:</strong> None</p>
+<hr />
+<h4>C004: "Peter Goler of the Kato Institute observed in the Washington Post that this is the first time a presidential candidate of a rival party will address the convention of a party that is presumably gathering to nominate its own candidate"</h4>
+<p><strong>Rating:</strong> INSUFFICIENT EVIDENCE | <strong>Confidence:</strong> 30% | <strong>Severity:</strong> medium</p>
+<p><strong>Explanation:</strong> No credible sources were found to verify or refute this claim. The evidence snippets provided do not include the Washington Post article by Peter Goler, and the snippets are about unrelated topics (2008 Republican debates, historical documents).</p>
+<p><strong>Sources:</strong> Tier 6 — General web (1)</p>
+<p><strong>Red Flags:</strong> insufficient_evidence</p>
+<p><strong>Rhetorical Issues:</strong> None</p>
+<hr />
+<h2>Sources</h2>
+<ul>
+<li><a href="https://en.wikipedia.org/wiki/2024_Libertarian_National_Convention">https://en.wikipedia.org/wiki/2024_Libertarian_National_Convention</a> — Tier 6 (General web)</li>
+<li><a href="https://en.wikipedia.org/wiki/Libertarian_Party_(United_States)">https://en.wikipedia.org/wiki/Libertarian_Party_(United_States)</a> — Tier 6 (General web)</li>
+<li><a href="https://lnc2024.com/">https://lnc2024.com/</a> — Tier 6 (General web)</li>
+<li><a href="https://www.gobankingrates.com/money/wealth/how-much-richer-donald-trump-gotten-over-last-5-years/">https://www.gobankingrates.com/money/wealth/how-much-richer-donald-trump-gotten-over-last-5-years/</a> — Tier 6 (General web)</li>
+<li><a href="https://www.ms.now/ali-velshi/trump-forbes-net-worth-profiting-business-deals-corruption">https://www.ms.now/ali-velshi/trump-forbes-net-worth-profiting-business-deals-corruption</a> — Tier 6 (General web)</li>
+<li><a href="https://www.nbcnews.com/politics/2024-election/libertarian-convention-crowd-appears-hostile-trump-ahead-speech-rcna154029">https://www.nbcnews.com/politics/2024-election/libertarian-convention-crowd-appears-hostile-trump-ahead-speech-rcna154029</a> — Tier 6 (General web)</li>
+</ul>
+        </article>
+
+        <div style="background-color:#f4f4f4;padding:1em;border-radius:0.3em;margin-top:1.5rem;">
+            <details>
+                <summary>Download Artifacts</summary>
+                <p>Artifact downloads are not available in demo mode.</p>
+            </details>
+        </div>
+
+        <nav style="margin-top:1.5rem;display:flex;gap:1rem;">
+            <a href="index.html" role="button">Start New</a>
+            <a href="runs.html" role="button" class="secondary">History</a>
+        </nav>
+    </main>
+    <footer class="container"><small>Evident Video Fact Checker &mdash; Demo</small></footer>
+</body>
+</html>

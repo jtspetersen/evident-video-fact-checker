@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Evident — Video Fact-check Report</title>
+    <link rel="stylesheet" href="static/pico.min.css">
+    <style>
+        :root { --pico-font-family-sans-serif: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+        nav .brand { display: inline-flex; align-items: center; }
+        nav .brand img { height: 100px; width: 100px; object-fit: contain; }
+        .demo-tag { background: #ff8f00; color: #000; padding: 0.15em 0.45em; border-radius: 3px; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.05em; vertical-align: super; margin-left: -0.3rem; }
+        nav ul li a[role="button"] { padding: 0.4em 1em; font-size: 0.9rem; }
+        .badge { display: inline-block; padding: 0.15em 0.5em; border-radius: 4px; font-size: 0.85em; font-weight: 600; }
+        .badge-true { background: #2e7d32; color: #fff; }
+        .badge-likely-true { background: #558b2f; color: #fff; }
+        .badge-insufficient-evidence { background: #f9a825; color: #000; }
+        .badge-conflicting-evidence { background: #ff8f00; color: #000; }
+        .badge-likely-false { background: #e65100; color: #fff; }
+        .badge-false { background: #c62828; color: #fff; }
+        .badge-running { background: #1565c0; color: #fff; }
+        .badge-review { background: #6a1b9a; color: #fff; }
+        .badge-done { background: #2e7d32; color: #fff; }
+        .badge-error { background: #c62828; color: #fff; }
+        .badge-pending { background: #757575; color: #fff; }
+        .badge-cancelled { background: #757575; color: #fff; }
+        .stage-timeline { display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 1rem 0; }
+        .stage-box { padding: 0.4em 0.8em; border-radius: 6px; font-size: 0.8em; background: var(--pico-muted-border-color); color: var(--pico-muted-color); white-space: nowrap; }
+        .stage-box.active { background: #1565c0; color: #fff; animation: pulse 1.5s ease-in-out infinite; }
+        .stage-box.completed { background: #2e7d32; color: #fff; }
+        .stage-box.skipped { opacity: 0.5; text-decoration: line-through; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+        .log-stream { max-height: 400px; overflow-y: auto; background: var(--pico-code-background-color); padding: 0.75rem; border-radius: 6px; font-family: monospace; font-size: 0.8em; line-height: 1.6; }
+        .log-stream .log-line { border-bottom: 1px solid var(--pico-muted-border-color); padding: 2px 0; }
+        .drop-zone { border: 2px dashed var(--pico-muted-border-color); border-radius: 8px; padding: 2rem; text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s; }
+        .drop-zone:hover, .drop-zone.dragover { border-color: var(--pico-primary); background: var(--pico-primary-focus); }
+        .drop-zone input[type="file"] { display: none; }
+        .report-content h1 { font-size: 1.6rem; margin-top: 1.5rem; }
+        .report-content h2 { font-size: 1.3rem; margin-top: 1.3rem; }
+        .report-content h3 { font-size: 1.1rem; margin-top: 1rem; }
+        .report-content table { font-size: 0.9em; }
+        .report-content blockquote { border-left: 3px solid var(--pico-primary); padding-left: 1rem; font-style: italic; }
+        h1 { font-size: 1.5em; }
+        footer { margin-top: 2rem; text-align: center; font-size: 0.85em; }
+    </style>
+</head>
+<body>
+    <nav class="container-fluid">
+        <ul><li><a href="index.html" class="brand"><img src="images/Evident_logo.png" alt="Evident"></a> <span class="demo-tag">DEMO</span></li></ul>
+        <ul>
+            <li><a href="index.html" role="button">Start New</a></li>
+            <li><a href="runs.html" role="button" class="secondary">History</a></li>
+        </ul>
+    </nav>
+    <hr style="margin:0;">
+    <main class="container">
+        <hgroup>
+            <h1>Video Fact-check Report</h1>
+        </hgroup>
+
+        <article class="report-content">
+            <p>
+                <strong>Video Title:</strong> This Is Planned<br>
+                <strong>Channel:</strong> Tim Pool<br>
+                <strong>ID:</strong> <code>20260210_234453</code><br>
+                <strong>Date:</strong> 2026-02-11
+            </p>
+
+<h2>Executive Overview</h2>
+<p>23 claims analyzed | 2 narrative clusters detected</p>
+<table>
+<thead>
+<tr>
+<th>Rating</th>
+<th>Count</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>TRUE</td>
+<td>0</td>
+</tr>
+<tr>
+<td>LIKELY TRUE</td>
+<td>0</td>
+</tr>
+<tr>
+<td>INSUFFICIENT EVIDENCE</td>
+<td>18</td>
+</tr>
+<tr>
+<td>CONFLICTING EVIDENCE</td>
+<td>0</td>
+</tr>
+<tr>
+<td>LIKELY FALSE</td>
+<td>0</td>
+</tr>
+<tr>
+<td>FALSE</td>
+<td>5</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Key concern areas:</strong> anonymous_or_uncited (11), insufficient_evidence (6), insufficient_evidence_for_claim_type (5)
+<strong>Source quality:</strong> 18 sources across tiers 4, 6. 0% from tiers 1-3.</p>
+<p>Across the 23 claims fact-checked, the majority—18—received a verdict of "Insufficient Evidence" due to a lack of supporting or refuting information in the provided sources. Of the claims receiving definitive verdicts, five were rated "False," with misrepresentations regarding aid allocations to Pakistan, Chinese infrastructure projects in Greenland, and the characterization of the CCP's governance model. These findings indicate that a substantial portion of the content lacks verifiable evidence, while specific claims made were demonstrably inaccurate based on the available information.</p>
+<hr />
+<h2>Key Findings</h2>
+<p><strong>FALSE (high severity):</strong>
+- <strong>C002</strong> — The claim states China engages in infrastructure projects in Greenland to create economic dependencies via mining deals. However, evidence shows China...
+- <strong>G001</strong> — Narrative group The speaker argues that low-trust individuals in a high-trust society cause syst: The narrative assembles unverified claims (all rated 'INSUFFICIENT EVIDENCE') into a causal chain implying societal collapse from low-trust population...
+- <strong>G002</strong> — Narrative group The speaker frames political ideologies as inherently flawed, using extreme exam: The speaker uses multiple false claims (C001, C003, C023) and unsubstantiated claims (C004, C005) to create a distorted narrative that all political s...</p>
+<p><strong>Rhetorical issue in "C008":</strong> Implies cultural divide instead of geopolitical classification, Uses misleading population statistics to frame a false dichotomy
+<strong>Recurring pattern</strong>: "anonymous_or_uncited" detected across 11 claims
+<strong>Recurring pattern</strong>: "insufficient_evidence" detected across 6 claims
+<strong>Recurring pattern</strong>: "insufficient_evidence_for_claim_type" detected across 5 claims</p>
+<hr />
+<h2>Introduction</h2>
+<p>Welcome to Evident, where we check claims against the available evidence. Today we reviewed 23 claims made by Tim Pool. The majority of claims—18 in total—received a rating of "Insufficient Evidence," while 5 claims were rated as "False."</p>
+<hr />
+<h2>Analysis</h2>
+<h3>High-Severity Findings</h3>
+<p>The claim that China engages in infrastructure projects in multiple countries, including Greenland, to create economic dependencies through mining deals is FALSE. The transcript states, "That's why China engages in all these infrastructure projects in all these countries. In Greenland, they tried to do the same kind of mining deals uh to create those exactly those kinds of dependencies." However, the evidence shows that while China <em>attempted</em> such projects, most failed to materialize, and no dependencies were established. The speaker uses the phrase "engages in" to imply current success, despite evidence of failed attempts, conflating attempted deals with established dependencies. <strong>See C002 in Claim Details.</strong></p>
+<p>The claim that a group organized a vigil with guns to show solidarity with Alex Prey, aiming to desensitize liberals to gun ownership is FALSE. The evidence from EL PAÍS describes a peaceful memorial with candles, photos, and messages, directly contradicting the claim about firearms. <strong>See C022 in Claim Details.</strong></p>
+<p>The narrative group G001 argues that low-trust individuals in a high-trust society cause systemic degradation, leading to societal collapse. This narrative is MISLEADING because it assembles unverified claims into a causal chain without supporting evidence. The speaker uses anecdotal examples, like bicycle theft, to imply national degradation, committing a false analogy and false extrapolation. The claim that a society collapses when 10% of the population is untrustworthy is not supported by the evidence. <strong>See narrative group G001 in Claim Details.</strong></p>
+<p>The narrative group G002 frames political ideologies as inherently flawed, suggesting all systems inevitably lead to authoritarian control, is LARGELY MISLEADING. The speaker relies on false claims about US aid to Pakistan, the CCP's governance model, and communist ideology, alongside unsubstantiated claims about cultural values. This is a deliberate attempt to mislead by creating a false equivalence and using straw man arguments. The narrative's conclusion of inevitable authoritarianism is unsupported by evidence. <strong>See narrative group G002 in Claim Details.</strong></p>
+<h3>Confirmed Claims</h3>
+<p>No claims in this category.</p>
+<h3>Unresolved Claims</h3>
+<p>The claim that "Humanity's existence is normally just a small number of people at the top with all the wealth, and 99% of the people are completely povertyridden" is rated INSUFFICIENT EVIDENCE. No evidence snippets were retrieved to verify or refute this claim. <strong>See C006 in Claim Details.</strong></p>
+<p>The claim that "Most of us have probably lived in good neighborhoods and bad neighborhoods" is rated INSUFFICIENT EVIDENCE. The provided evidence focuses on neighborhood walkability and longevity, not the prevalence of experiencing both good and bad neighborhoods. <strong>See C007 in Claim Details.</strong></p>
+<p>The claim that "First world culture has a population of about 1 billion, while third world culture has a population of about 7 billion" is rated INSUFFICIENT EVIDENCE. The terms "First World" and "Third World" are outdated and misapplied to 'cultures' rather than countries. The population figures are also inaccurate. While the speaker attempts to highlight a disparity, it's based on flawed categorization and data. <strong>See C008 in Claim Details.</strong></p>
+<p>The claim that "The hypothetical scenario involves a rifle that holds 30 rounds" is rated INSUFFICIENT EVIDENCE. No evidence snippets were retrieved to verify this detail of the hypothetical scenario. <strong>See C015 in Claim Details.</strong></p>
+<p>The claim that "The hypothetical scenario includes a small backpack with a little bit of food" is rated INSUFFICIENT EVIDENCE. The provided evidence discusses backpack food programs but doesn't confirm the presence of food in the described scenario. <strong>See C016 in Claim Details.</strong></p>
+<p>The claim that "Teaming up, you're more likely to survive together than alone" is rated INSUFFICIENT EVIDENCE. No evidence snippets were retrieved to verify this claim. <strong>See C017 in Claim Details.</strong></p>
+<p>The claim that "If you come from a low trust society and that guy speaks the same language as you, you're going to shoot him" is rated INSUFFICIENT EVIDENCE. The provided evidence consists only of dictionary definitions and does not address the causal claim about trust, language, and violent behavior. <strong>See C018 in Claim Details.</strong></p>
+<p>The claim that "A viral post claims that some individuals reject the Second Amendment and state they will kill others if they possess guns" is rated INSUFFICIENT EVIDENCE. No credible sources were found to confirm the existence of the described viral post. <strong>See C019 in Claim Details.</strong></p>
+<p>The claim that "Individuals attended a vigil with firearms to demonstrate solidarity with Alex Prey, according to the speaker's account" is rated INSUFFICIENT EVIDENCE. No evidence snippets were retrieved to verify this claim. <strong>See C020 in Claim Details.</strong></p>
+<p>The claim that "A viral post claims, 'I don't care about PR's right to a second amendment. I don't believe in the Second Amendment. I have guns and I'll kill you if you do.'" is rated INSUFFICIENT EVIDENCE. The provided evidence does not contain the viral post described in the claim. <strong>See C021 in Claim Details.</strong></p>
+<h3>Detected Patterns</h3>
+<p>Several claims present information as established fact when evidence of actual success is lacking; this appears in instances where attempted projects are presented as current engagements, or potential deals are conflated with existing dependencies. Additionally, a pattern of relying on uncited or anonymous sources is prevalent, significantly impacting the verifiability of multiple claims. We also see instances where terminology is misused or misrepresented, including outdated classifications and the inaccurate application of terms to concepts beyond their intended scope. Finally, some claims rely on mischaracterizations, presenting a party's self-description as a definitive reality rather than a stated position.</p>
+<hr />
+<h2>Conclusion</h2>
+<p>The review found five claims to be demonstrably false, primarily concerning Chinese activity in Greenland and the framing of societal issues. A significant portion of the claims—18 in total—lacked sufficient evidence to verify, and many relied on anonymous or uncited sources. The analysis reveals a pattern of building narratives with unverified assertions, and in one instance, misrepresenting data to suggest a cultural divide where geopolitical factors are more relevant. It's important to approach these types of broad claims with scrutiny, focusing on verified information and acknowledging what remains unsupported by evidence.</p>
+<hr />
+<h2>Claim Details</h2>
+<h3>High-Severity Claims</h3>
+<h4>C002: "China engages in infrastructure projects in multiple countries, including Greenland, to create economic dependencies through mining deals"</h4>
+<p><strong>Rating:</strong> FALSE | <strong>Confidence:</strong> 85% | <strong>Severity:</strong> high</p>
+<p><strong>Explanation:</strong> The claim states China engages in infrastructure projects in Greenland to create economic dependencies via mining deals. However, evidence shows China attempted such projects (e.g., airport bid withdrawal in 2019), but most major initiatives failed to materialize, as confirmed by multiple sources. The Greenland government has rejected Chinese mining deals, and no dependencies were established.</p>
+<p><strong>Sources:</strong> Tier 6 — General web (1)</p>
+<p><strong>Citations:</strong>
+- <a href="https://www.belfercenter.org/research-analysis/china-arctic-investments">https://www.belfercenter.org/research-analysis/china-arctic-investments</a> — "China Withdraws Bid for Greenland Airport Projects, Reuters, June 4, 2019"
+- <a href="https://merics.org/en/merics-briefs/china-and-dispute-over-greenland-trade-deal-canada-population-decline">https://merics.org/en/merics-briefs/china-and-dispute-over-greenland-trade-deal-canada-population-decline</a> — "most major projects have never materialize"</p>
+<p><strong>Red Flags:</strong> Conflates attempted projects with successful dependencies, Implies ongoing successful engagement without evidence of materialization</p>
+<p><strong>Rhetorical Issues:</strong> Uses 'engages in' to imply current success despite evidence of failed attempts, Conflates attempted deals with established dependencies</p>
+<p><strong>Corrected Claim:</strong> China has attempted mining and infrastructure projects in Greenland, but most major initiatives failed to materialize, resulting in no established economic dependencies.</p>
+<hr />
+<h4>C008: "First world culture has a population of about 1 billion, while third world culture has a population of about 7 billion"</h4>
+<p><strong>Rating:</strong> INSUFFICIENT EVIDENCE | <strong>Confidence:</strong> 40% | <strong>Severity:</strong> high</p>
+<p><strong>Explanation:</strong> The terms 'First World' and 'Third World' are outdated Cold War-era geopolitical classifications referring to countries, not 'cultures.' The claim misrepresents population figures: developed nations (historically 'First World') have a population of approximately 1.2 billion, not 1 billion, while developing nations (historically 'Third World') total about 6.8 billion, not 7 billion. The claim also incorrectly applies these terms to 'cultures' and uses inaccurate statistics.</p>
+<p><strong>Sources:</strong> Tier 6 — General web (1)</p>
+<p><strong>Red Flags:</strong> Outdated terminology ('First World'/'Third World'), Misapplication to 'culture' instead of countries, Inaccurate population figures, evidence_found_citations_incomplete, insufficient_evidence_for_claim_type</p>
+<p><strong>Rhetorical Issues:</strong> Implies cultural divide instead of geopolitical classification, Uses misleading population statistics to frame a false dichotomy</p>
+<p><strong>Corrected Claim:</strong> Developed countries (historically referred to as 'First World') have a population of approximately 1.2 billion, while developing countries (historically 'Third World') have a population of about 6.8 billion.</p>
+<hr />
+<h4>G001: "The speaker argues that low-trust individuals in a high-trust society cause systemic degradation through perceived scams and exploitation, leading to societal collapse"</h4>
+<p><strong>Type:</strong> NARRATIVE GROUP | <strong>Rating:</strong> MISLEADING | <strong>Confidence:</strong> 90% | <strong>Severity:</strong> high</p>
+<p><strong>Explanation:</strong> The narrative assembles unverified claims (all rated 'INSUFFICIENT EVIDENCE') into a causal chain implying societal collapse from low-trust populations. The evidence provided (dictionary definitions and general trust data) does not support the specific mechanisms claimed, such as the 10% threshold or neighborhood-to-national extrapolation. The speaker uses anecdotal examples (bicycle theft) to falsely imply national degradation without evidence of causation.</p>
+<p><strong>Component Claims:</strong>
+- <strong>C009 [INSUFFICIENT EVIDENCE (20%)]</strong> — "First world cultures are vulnerable to exploitation by third world cultures due to being a high trust society"
+- <strong>C010 [INSUFFICIENT EVIDENCE (30%)]</strong> — "Low trust individuals entering a high trust society perceive scams and opportunities everywhere, making it easy for the society to be degraded"
+- <strong>C011 [INSUFFICIENT EVIDENCE (20%)]</strong> — "In high trust neighborhoods, children's bicycles left out for hours typically remain undisturbed"
+- <strong>C012 [INSUFFICIENT EVIDENCE (20%)]</strong> — "In low trust neighborhoods, bicycles left unattended for minutes are often stolen"
+- <strong>C013 [INSUFFICIENT EVIDENCE (20%)]</strong> — "A 10% low trust population in a first world nation forces all individuals to adopt low trust behaviors to avoid exploitation"
+- <strong>C014 [INSUFFICIENT EVIDENCE (20%)]</strong> — "A first world high trust nation with even 10% low trust population will force all individuals to act as if everyone is trying to exploit them"</p>
+<p><strong>Reasoning Gap:</strong> The narrative assumes neighborhood-level trust dynamics (e.g., bicycle theft) directly scale to national societal collapse due to a 10% low-trust population, but the evidence shows only correlation between trust and economic outcomes (SRC0018), not causal mechanisms of population composition causing degradation.</p>
+<p><strong>Sources:</strong> Not directly listed in narrative analysis, see component claims</p>
+<p><strong>Red Flags:</strong> anonymous_or_uncited, insufficient_evidence, insufficient_evidence_for_claim_type</p>
+<p><strong>Rhetorical Issues:</strong> false_causation, false_analogy, false_extrapolation</p>
+<p><strong>Rhetorical Strategy:</strong> false_causation</p>
+<p><strong>Corrected Narrative:</strong> The narrative assumes neighborhood-level trust dynamics (e.g., bicycle theft) directly scale to national societal collapse due to a 10% low-trust population, but the evidence shows only correlation between trust and economic outcomes (SRC0018), not causal mechanisms of population composition causing degradation.</p>
+<hr />
+<h4>G002: "The speaker frames political ideologies as inherently flawed, using extreme examples to suggest all systems inevitably lead to authoritarian control"</h4>
+<p><strong>Type:</strong> NARRATIVE GROUP | <strong>Rating:</strong> LARGELY MISLEADING | <strong>Confidence:</strong> 90% | <strong>Severity:</strong> high</p>
+<p><strong>Explanation:</strong> The speaker uses multiple false claims (C001, C003, C023) and unsubstantiated claims (C004, C005) to create a distorted narrative that all political systems inevitably lead to authoritarian control. The false claims misrepresent US aid to Pakistan, the CCP's governance model, and communist ideology, while the unsubstantiated claims about cultural values are used without evidence. The narrative conclusion is not supported by evidence and is designed to mislead by creating a false equivalence between the CCP and a 'multicultural democracy' and by using straw man arguments.</p>
+<p><strong>Component Claims:</strong>
+- <strong>C001 [FALSE (90%)]</strong> — "Speaker 1 claims $13 million was allocated for gender studies in Pakistan"
+- <strong>C003 [FALSE (90%)]</strong> — "Speaker 1 describes the U.S. as potentially becoming a multicultural democracy similar to the CCP's governance model"
+- <strong>C004 [INSUFFICIENT EVIDENCE (20%)]</strong> — "Speaker 1 characterizes party communism as a system where power is stolen from others and leads to power struggles among military officers"
+- <strong>C005 [INSUFFICIENT EVIDENCE (20%)]</strong> — "Speaker 1 describes fascists as traditionalists and communists as progressives with opposing cultural values"
+- <strong>C023 [FALSE (90%)]</strong> — "Communists are described as believing that only communists should have guns, and no one else"</p>
+<p><strong>Reasoning Gap:</strong> The narrative incorrectly assumes that a few misrepresented examples (e.g., the CCP's governance model and communist ideology) are representative of all political systems, ignoring the actual diversity of governance models and the fact that the examples are false or unsubstantiated.</p>
+<p><strong>Sources:</strong> Not directly listed in narrative analysis, see component claims</p>
+<p><strong>Red Flags:</strong> Conflating CCP's self-description with reality, Distortion of historical text, Misattribution, Mischaracterization of terminology, anonymous_or_uncited</p>
+<p><strong>Rhetorical Issues:</strong> misrepresentation, straw_man, false_equivalence, cherry_picked</p>
+<p><strong>Rhetorical Strategy:</strong> motte_and_bailey</p>
+<p><strong>Corrected Narrative:</strong> The narrative incorrectly assumes that a few misrepresented examples (e.g., the CCP's governance model and communist ideology) are representative of all political systems, ignoring the actual diversity of governance models and the fact that the examples are false or unsubstantiated.</p>
+<h3>Medium-Severity Claims</h3>
+<h4>C006: "Humanity's existence is normally just a small number of people at the top with all the wealth, and 99% of the people are completely povertyridden"</h4>
+<p><strong>Rating:</strong> INSUFFICIENT EVIDENCE | <strong>Confidence:</strong> 20% | <strong>Severity:</strong> medium</p>
+<p><strong>Explanation:</strong> No evidence snippets were retrieved for this claim, so it cannot be verified.</p>
+<p><strong>Red Flags:</strong> anonymous_or_uncited</p>
+<p><strong>Rhetorical Issues:</strong> None</p>
+<hr />
+<h4>C007: "Most of us have probably lived in good neighborhoods and bad neighborhoods"</h4>
+<p><strong>Rating:</strong> INSUFFICIENT EVIDENCE | <strong>Confidence:</strong> 30% | <strong>Severity:</strong> medium</p>
+<p><strong>Explanation:</strong> The claim is a generalization about personal neighborhood experiences, but the provided evidence snippets discuss neighborhood walkability and longevity (not the prevalence of living in both good and bad neighborhoods). No relevant evidence was found to verify or refute the claim.</p>
+<p><strong>Sources:</strong> Tier 6 — General web (1)</p>
+<p><strong>Red Flags:</strong> insufficient_evidence, insufficient_evidence_for_claim_type</p>
+<p><strong>Rhetorical Issues:</strong> None</p>
+<hr />
+<h4>C015: "The hypothetical scenario involves a rifle that holds 30 rounds"</h4>
+<p><strong>Rating:</strong> INSUFFICIENT EVIDENCE | <strong>Confidence:</strong> 20% | <strong>Severity:</strong> medium</p>
+<p><strong>Explanation:</strong> No evidence snippets were retrieved for this claim, so it cannot be verified.</p>
+<p><strong>Red Flags:</strong> anonymous_or_uncited</p>
+<p><strong>Rhetorical Issues:</strong> None</p>
+<hr />
+<h4>C016: "The hypothetical scenario includes a small backpack with a little bit of food"</h4>
+<p><strong>Rating:</strong> INSUFFICIENT EVIDENCE | <strong>Confidence:</strong> 30% | <strong>Severity:</strong> medium</p>
+<p><strong>Explanation:</strong> The provided evidence snippets discuss backpack food programs and dictionary definitions of 'hypothetical', but contain no information about the transcript scenario described in the claim. The evidence snippets are irrelevant to verifying the claim's content about the backpack in the survival scenario.</p>
+<p><strong>Sources:</strong> Tier 6 — General web (1)</p>
+<p><strong>Red Flags:</strong> insufficient_evidence, insufficient_evidence_for_claim_type</p>
+<p><strong>Rhetorical Issues:</strong> None</p>
+<hr />
+<h4>C017: "Teaming up, you're more likely to survive together than alone"</h4>
+<p><strong>Rating:</strong> INSUFFICIENT EVIDENCE | <strong>Confidence:</strong> 20% | <strong>Severity:</strong> medium</p>
+<p><strong>Explanation:</strong> No evidence snippets were retrieved for this claim, so it cannot be verified.</p>
+<p><strong>Red Flags:</strong> anonymous_or_uncited</p>
+<p><strong>Rhetorical Issues:</strong> None</p>
+<hr />
+<h4>C018: "If you come from a low trust society and that guy speaks the same language as you, you're going to shoot him"</h4>
+<p><strong>Rating:</strong> INSUFFICIENT EVIDENCE | <strong>Confidence:</strong> 30% | <strong>Severity:</strong> medium</p>
+<p><strong>Explanation:</strong> The provided evidence snippets are dictionary definitions of the word 'low' and do not address the causal claim about trust societies and shooting behavior. No relevant evidence was found to verify or refute the claim.</p>
+<p><strong>Sources:</strong> Tier 6 — General web (1)</p>
+<p><strong>Red Flags:</strong> insufficient_evidence, insufficient_evidence_for_claim_type</p>
+<p><strong>Rhetorical Issues:</strong> None</p>
+<hr />
+<h4>C019: "A viral post claims that some individuals reject the Second Amendment and state they will kill others if they possess guns"</h4>
+<p><strong>Rating:</strong> INSUFFICIENT EVIDENCE | <strong>Confidence:</strong> 30% | <strong>Severity:</strong> medium</p>
+<p><strong>Explanation:</strong> No credible sources were found to verify or refute the existence of the viral post described in the transcript. The evidence snippets provided discuss unrelated topics (e.g., DOJ reports on firearm bans, legal definitions of true threats) but do not reference or confirm the specific viral post quote.</p>
+<p><strong>Sources:</strong> Tier 6 — General web (1)</p>
+<p><strong>Red Flags:</strong> insufficient_evidence</p>
+<p><strong>Rhetorical Issues:</strong> None</p>
+<hr />
+<h4>C020: "Individuals attended a vigil with firearms to demonstrate solidarity with Alex Prey, according to the speaker's account"</h4>
+<p><strong>Rating:</strong> INSUFFICIENT EVIDENCE | <strong>Confidence:</strong> 20% | <strong>Severity:</strong> medium</p>
+<p><strong>Explanation:</strong> No evidence snippets were retrieved for this claim, so it cannot be verified.</p>
+<p><strong>Red Flags:</strong> anonymous_or_uncited</p>
+<p><strong>Rhetorical Issues:</strong> None</p>
+<hr />
+<h4>C021: "A viral post claims, 'I don't care about PR's right to a second amendment. I don't believe in the Second Amendment. I have guns and I'll kill you if you do.'"</h4>
+<p><strong>Rating:</strong> INSUFFICIENT EVIDENCE | <strong>Confidence:</strong> 30% | <strong>Severity:</strong> medium</p>
+<p><strong>Explanation:</strong> The evidence snippets do not contain the viral post described in the claim. The provided sources discuss a protest related to Alex Pretti's death and gun rights organizations' responses, but none verify the existence of the specific viral post with the quoted text. The transcript context attributes the quote but does not provide evidence of the post's existence.</p>
+<p><strong>Sources:</strong> Tier 6 — General web (1)</p>
+<p><strong>Red Flags:</strong> insufficient_evidence</p>
+<p><strong>Rhetorical Issues:</strong> None</p>
+<hr />
+<h4>C022: "A group organized a vigil with guns to show solidarity with Alex Prey, aiming to desensitize liberals to gun ownership"</h4>
+<p><strong>Rating:</strong> FALSE | <strong>Confidence:</strong> 90% | <strong>Severity:</strong> medium</p>
+<p><strong>Explanation:</strong> The evidence from EL PAÍS describes a peaceful memorial with candles, photos, and messages, with no mention of guns. The claim that the vigil was organized with guns is directly contradicted by the evidence.</p>
+<p><strong>Sources:</strong> Tier 6 — General web (1)</p>
+<p><strong>Citations:</strong>
+- <a href="https://english.elpais.com/usa/2026-01-26/minneapolis-protests-against-impunity-of-the-immigration-agents-who-killed-alex-pretti.html">https://english.elpais.com/usa/2026-01-26/minneapolis-protests-against-impunity-of-the-immigration-agents-who-killed-alex-pretti.html</a> — "adorned with photos, candles, messages against Trump, lists of signs to detect the rise of fascism, and expressions of g..."</p>
+<p><strong>Red Flags:</strong> None</p>
+<p><strong>Rhetorical Issues:</strong> None</p>
+<p><strong>Corrected Claim:</strong> A group organized a peaceful vigil with candles and photos to show solidarity with Alex Pretti, a victim of Border Patrol agents.</p>
+<hr />
+<h2>Sources</h2>
+<ul>
+<li><a href="https://www.factcheck.org/2019/09/marx-engels-quote-falsely-attributed-to-reagan/">https://www.factcheck.org/2019/09/marx-engels-quote-falsely-attributed-to-reagan/</a> — Tier 4 (Research orgs / think tanks)</li>
+<li><a href="https://english.elpais.com/usa/2026-01-26/minneapolis-protests-against-impunity-of-the-immigration-agents-who-killed-alex-pretti.html">https://english.elpais.com/usa/2026-01-26/minneapolis-protests-against-impunity-of-the-immigration-agents-who-killed-alex-pretti.html</a> — Tier 6 (General web)</li>
+<li><a href="https://merics.org/en/merics-briefs/china-and-dispute-over-greenland-trade-deal-canada-population-decline">https://merics.org/en/merics-briefs/china-and-dispute-over-greenland-trade-deal-canada-population-decline</a> — Tier 6 (General web)</li>
+<li><a href="https://moderndiplomacy.eu/2025/05/04/chinas-characteristic-democracy-an-alternative-to-liberal-democracy/">https://moderndiplomacy.eu/2025/05/04/chinas-characteristic-democracy-an-alternative-to-liberal-democracy/</a> — Tier 6 (General web)</li>
+<li><a href="https://www.belfercenter.org/research-analysis/china-arctic-investments">https://www.belfercenter.org/research-analysis/china-arctic-investments</a> — Tier 6 (General web)</li>
+<li><a href="https://www.business-standard.com/article/international/us-congress-clears-25-million-for-democracy-gender-programmes-in-pakistan-120122201575_1.html">https://www.business-standard.com/article/international/us-congress-clears-25-million-for-democracy-gender-programmes-in-pakistan-120122201575_1.html</a> — Tier 6 (General web)</li>
+</ul>
+        </article>
+
+        <div style="background-color:#f4f4f4;padding:1em;border-radius:0.3em;margin-top:1.5rem;">
+            <details>
+                <summary>Download Artifacts</summary>
+                <p>Artifact downloads are not available in demo mode.</p>
+            </details>
+        </div>
+
+        <nav style="margin-top:1.5rem;display:flex;gap:1rem;">
+            <a href="index.html" role="button">Start New</a>
+            <a href="runs.html" role="button" class="secondary">History</a>
+        </nav>
+    </main>
+    <footer class="container"><small>Evident Video Fact Checker &mdash; Demo</small></footer>
+</body>
+</html>
